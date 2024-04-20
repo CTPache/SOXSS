@@ -1,31 +1,26 @@
 import asyncio
-from http.server import BaseHTTPRequestHandler, HTTPServer
+from http.server import SimpleHTTPRequestHandler, HTTPServer
 
 host = "localhost"
 port = 8002
 cache = {}
 consoleMod = None
-consoleOut = ''
+consoleOut = ""
+defaultPAth = "console.html"
 
-class ConsoleHTTPRequestHandler(BaseHTTPRequestHandler):
 
-    def do_GET(self):
-        asyncio.run(self.get())
+class ConsoleHTTPRequestHandler(SimpleHTTPRequestHandler):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, directory="console/", **kwargs)
 
     def do_POST(self):
         asyncio.run(self.post())
 
-    async def get(self):
-        response = bytes("GET not supported", "utf-8")
-        self.send_response(402)
-        self.send_header("Content-type", 'text')
-        self.end_headers()
-        self.wfile.write(response)
-
     async def post(self):
-        
+
         contentLength = int(self.headers["Content-Length"])
-        body = self.rfile.read(contentLength).decode('utf-8')
+        body = self.rfile.read(contentLength).decode("utf-8")
         if hasattr(consoleMod, "socket"):
             last = consoleOut
             await consoleMod.sendMessage(consoleMod.socket, body)
@@ -34,7 +29,7 @@ class ConsoleHTTPRequestHandler(BaseHTTPRequestHandler):
             response = bytes(consoleOut, "utf-8")
             self.send_response(200)
             self.send_header("Access-Control-Allow-Origin", "*")
-            self.send_header("Content-type", 'application/json')
+            self.send_header("Content-type", "application/json")
             self.end_headers()
             self.wfile.write(response)
 

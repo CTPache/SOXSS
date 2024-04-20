@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Terminal Web</title>
+    <link rel="stylesheet" href="console.css">
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="console.js"></script>
+    <script src="loadScripts.js"></script>
+</head>
+
+<body>
+    <div class="terminal">
+        <div id="log"></div>
+        <form onsubmit="sendConsole($('#inputCommand').val()).then(data =>logComand(data));return false">
+            <div onKeyPress="return checkSubmit(event)"></div>
+            <input type="text" id="inputCommand" placeholder="">
+            <input type="button" id="btnMITM" onclick="window.open('http://localhost:8001', '_blank');return false" value="MITM">
+        </form>
+    </div>
+</body>
+
+</html>

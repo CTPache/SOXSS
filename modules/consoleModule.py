@@ -4,7 +4,6 @@ import time
 from cryptoUtil import sendSecretMessage
 from modules.abstractModule import Module
 import modules.consoleComands.getComands as comands
-import pytimedinput
 import modules.ConsoleServer as server
 
 class ConsoleInWeb(Module):
@@ -29,7 +28,9 @@ class ConsoleInWeb(Module):
             await sendSecretMessage(websocket, comands.getComands()[comands.default].execute(msg))
 
 
+'''
 # Obsoleto, mejor usar el módulo web
+import pytimedinput
 
 class ConsoleOut(Module):
     type = 0
@@ -69,3 +70,4 @@ class ConsoleIn(Module):
             await sendSecretMessage(websocket, comands.getComands()[msg.split(" ")[0]].execute(msg))
         else:
             await sendSecretMessage(websocket, comands.getComands()[comands.default].execute(msg))
+'''

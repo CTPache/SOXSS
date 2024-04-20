@@ -1,5 +1,5 @@
 from modules.loggerModule import Logger
-from modules.consoleModule import ConsoleIn, ConsoleInWeb, ConsoleOut
+from modules.consoleModule import  ConsoleInWeb #, ConsoleOut, ConsoleIn
 from modules.screenshotModule import ScreenshotModule
 from modules.MITMModule import MITMModule
 

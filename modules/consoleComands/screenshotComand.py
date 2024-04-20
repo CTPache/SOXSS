@@ -5,4 +5,4 @@ class GetFrameComand(Comand):
     type = 'screenshot'
 
     def execute(self, payload):
-        return json.dumps({"command": "screenshot"})
+        return json.dumps({"comand": "screenshot"})

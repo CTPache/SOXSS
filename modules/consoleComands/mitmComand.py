@@ -7,4 +7,4 @@ class MITMComand(Comand):
 
     def execute(self, payload):
         args = " ".join(payload.split(" ")[1:])
-        return json.dumps({"command": "mitm", "url": args})
+        return json.dumps({"comand": "mitm", "url": args})

@@ -5,4 +5,4 @@ class DisableConsoleComand(Comand):
     type = 'disable'
 
     def execute(self, payload):
-        return json.dumps({"command": "disable"})
+        return json.dumps({"comand": "disable"})

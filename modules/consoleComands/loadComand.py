@@ -6,4 +6,4 @@ class LoadComand(Comand):
 
     def execute(self, payload):
         args = " ".join(payload.split(" ")[1:])
-        return json.dumps({"command": "load", "script": args})
+        return json.dumps({"comand": "load", "script": args})

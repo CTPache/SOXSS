@@ -26,7 +26,7 @@ class MITMHTTPRequestHandler(BaseHTTPRequestHandler):
             await mod.socket.send(
                 json.dumps(
                     {
-                        "command": "mitm",
+                        "comand": "mitm",
                         "method": method,
                         "url": self.path,
                     }
@@ -51,7 +51,7 @@ class MITMHTTPRequestHandler(BaseHTTPRequestHandler):
             await mod.socket.send(
                 json.dumps(
                     {
-                        "command": "mitm",
+                        "comand": "mitm",
                         "method": method,
                         "url": self.path,
                         "body": self.rfile.read(contentLength).decode("utf-8"),

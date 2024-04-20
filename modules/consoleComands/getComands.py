@@ -1,6 +1,6 @@
 from modules.consoleComands.disableConsole import DisableConsoleComand
 from modules.consoleComands.evalComand import EvalComand
-from modules.consoleComands.getFrameComand import GetFrameComand
+from modules.consoleComands.screenshotComand import GetFrameComand
 from modules.consoleComands.mitmComand import MITMComand
 from modules.consoleComands.okComand import OkComand
 from modules.consoleComands.loadComand import LoadComand

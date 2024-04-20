@@ -13,11 +13,15 @@
 <body>
     <div class="terminal">
         <div id="log"></div>
-        <form onsubmit="sendConsole($('#inputCommand').val()).then(data =>logComand(data));return false">
+        <form id="inputcomand"
+            onsubmit="sendConsole($('#inputText').val()).then(data =>logComand(data));return false">
             <div onKeyPress="return checkSubmit(event)"></div>
-            <input type="text" id="inputCommand" placeholder="">
-            <input type="button" id="btnMITM" onclick="window.open('http://localhost:8001', '_blank');return false" value="MITM">
+            <input id="inputText" type="text" placeholder="Input your comands here">
         </form>
+        <div id="btnGroup">
+            <input type="button" class="btnCmd" onclick="window.open('http://localhost:8001', '_blank');return false"
+                value="MITM">
+        </div>
     </div>
 </body>
 

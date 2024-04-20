@@ -1,4 +1,4 @@
-_webs_commands_['mitm'] = function (mes) {
+_webs_comands_['mitm'] = function (mes) {
     let msg = { url: mes.url, content: '<p>Not found</p>', contentType: 'text/html', method: mes.method ? mes.method : 'GET' }
     let toRequest = { method: msg['method'] }
     if (!(toRequest.method == 'GET'))

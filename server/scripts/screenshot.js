@@ -1,5 +1,5 @@
 loadScript('scripts/html2canvas.min.js')
-_webs_commands_['screenshot'] = function (mes) {
+_webs_comands_['screenshot'] = function (mes) {
     const screenshotTarget = document.body
     html2canvas(screenshotTarget).then((canvas) => {
         return canvas.toDataURL("image/png")

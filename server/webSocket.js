@@ -23,7 +23,7 @@ function loadScript(url) {
     })
 }
 
-const webSocket = new WebSocket("ws://" + host + ":" + port);
+const webSocket = new WebSocket("ws://" + host + ":" + wsport);
 webSocket.onopen = (event) => {
     sendMessage({ type: 1 });
 };
@@ -37,7 +37,7 @@ Comandos por defecto:
     eval - ejecuta lo que venga en el comando y devuelve lo que retorno
     load - carga un fichero desde un URL.
  */
-var _webs_commands_ = {
+var _webs_comands_ = {
     "OK": function (mes) { sendMessage({ type: 1 }) },
     "eval": function (mes) {
         sendMessage({ type: 0, msg: { outputType: "console", text: eval(mes["expression"]) } })
@@ -56,7 +56,7 @@ var _webs_commands_ = {
 webSocket.onmessage = (event) => {
     try {
         let mes = JSON.parse(event.data)
-        _webs_commands_[mes["command"]](mes)
+        _webs_comands_[mes["comand"]](mes)
     } catch (e) { sendMessage({ type: 0, msg: { outputType: "error", text: e.toString() } }) }
 
 };

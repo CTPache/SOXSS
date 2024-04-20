@@ -1,7 +1,7 @@
 body {
     background-color: #333;
     font-family: monospace;
-    color: #fff;
+    color: white;
     margin: 0;
     padding: 20px;
     display: flex;
@@ -16,10 +16,25 @@ body {
     padding: 2vh;
 }
 
+#btnGroup {
+    overflow: scroll;
+    color: white;
+    background-color: #222;
+    border: 2px solid #555;
+    padding: 2vh;
+}
+
+.btnCmd {
+    background-color: black;
+    color: white;
+    border: 2px solid #555;
+    padding: 2vh;
+}
+
 #log {
     width: 100%;
     height: 70vh;
-    background-color: #000;
+    background-color: black;
     color: white;
     overflow-y: auto;
     resize: none;
@@ -27,15 +42,27 @@ body {
     flex-direction: column-reverse;
 }
 
-#inputCommand {
+#inputcomand {
+    border: 1px solid black;
+    overflow: hidden;
+}
+
+#inputcomand>input {
     width: 100%;
+    padding-top: 1vh;
+    padding-bottom: 1vh;
+    overflow: hidden;
     background-color: #333;
     color: #fff;
-    border: 1px solid #555;
-    padding-top: 2vh;
+    border: none;
 }
 
 /* Colores de los mensajes de consola*/
+.inputMsg {
+    padding: 0;
+    margin: 1px;
+    color: white;
+}
 
 .console {
     color: lime;

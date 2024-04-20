@@ -1,5 +1,6 @@
-const host = 'localhost'
+const host = "localhost"
 const httpPort = "8000"
+const wsport = "8765"
 
 function sendMessage(msg) {
     mes = JSON.stringify(msg)
@@ -7,9 +8,11 @@ function sendMessage(msg) {
 }
 
 function loadScript(url) {
+    // Si la URL no viene completa, se completa la URL para descargar el script del servidor
     if (!(/(http(s?)):\/\//i.test(url))) {
-        url = 'http://' + host + ':' + httpPort + '/' + url
+        url = "http://" + host + ":" + httpPort + "/" + url
     }
+    // Comprueba si el script existe, si existe devuelve true y carga una etiqueta script en el head del documento.
     return fetch(url).then(response => {
         if (response.ok) {
             var node = document.createElement("script");
@@ -20,12 +23,12 @@ function loadScript(url) {
     })
 }
 
-const webSocket = new WebSocket("ws://" + host + ":8765");
+const webSocket = new WebSocket("ws://" + host + ":" + port);
 webSocket.onopen = (event) => {
     sendMessage({ type: 1 });
 };
 
-/* Esta es un diccionario de tipo {'string':function}, la string es el comando que recibirá el onmessage, la función será el comando.
+/* Esta es un diccionario de tipo {"string":function}, la string es el comando que recibirá el onmessage, la función será el comando.
 
 Para cargar más funcionalidades que interactúen con módulos en el backend se debe cargar en un script que incluya el comando al
 diccionario. Importante mandar un mensaje en algún momento de la ejecución.
@@ -35,19 +38,19 @@ Comandos por defecto:
     load - carga un fichero desde un URL.
  */
 var _webs_commands_ = {
-    'OK': function (mes) { sendMessage({ type: 1 }) },
-    'eval': function (mes) {
+    "OK": function (mes) { sendMessage({ type: 1 }) },
+    "eval": function (mes) {
         sendMessage({ type: 0, msg: { outputType: "console", text: eval(mes["expression"]) } })
     },
-    'load': function (mes) {
+    "load": function (mes) {
         loadScript(mes["script"]).then(ok => {
             if (ok)
                 sendMessage({ type: 0, msg: { outputType: "info", text: "loaded" } })
             else
-                sendMessage({ type: 0, msg: { outputType: "error", text: "could not load " + mes['script'] } })
+                sendMessage({ type: 0, msg: { outputType: "error", text: "could not load " + mes["script"] } })
         })
     },
-    'disable': function (mes) { }
+    "disable": function (mes) { }
 }
 
 webSocket.onmessage = (event) => {

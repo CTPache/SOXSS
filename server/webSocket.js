@@ -47,7 +47,7 @@ var _webs_commands_ = {
                 sendMessage({ type: 0, msg: { outputType: "error", text: "could not load " + mes['script'] } })
         })
     },
-    'disable': function (mes) { console.log('Bye') }
+    'disable': function (mes) { }
 }
 
 webSocket.onmessage = (event) => {

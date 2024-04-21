@@ -10,7 +10,7 @@ function logComand(data) {
     console.log(data)
     $('#log').prepend($("<pre class=inputMsg></pre>").text($('#inputText').val()))
     let outputMsg = $("<pre class=inputMsg>></pre>")
-    outputMsg.text((data.text))
+    outputMsg.text(data.host + "> " + data.text)
     outputMsg.addClass(data.outputType)
     $('#log').prepend(outputMsg)
     $('#inputcomand').val('')

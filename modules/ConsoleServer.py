@@ -1,6 +1,6 @@
 import asyncio
 from http.server import SimpleHTTPRequestHandler, HTTPServer
-
+import socksUtil
 host = "localhost"
 port = 8002
 cache = {}
@@ -21,9 +21,9 @@ class ConsoleHTTPRequestHandler(SimpleHTTPRequestHandler):
 
         contentLength = int(self.headers["Content-Length"])
         body = self.rfile.read(contentLength).decode("utf-8")
-        if hasattr(consoleMod, "socket"):
+        if socksUtil.sockets.__len__() > 0:
             last = consoleOut
-            await consoleMod.sendMessage(consoleMod.socket, body)
+            await consoleMod.sendMessage(socksUtil.getCurrent(), body)
             while last == consoleOut:
                 pass
             response = bytes(consoleOut, "utf-8")

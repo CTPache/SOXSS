@@ -1,15 +1,14 @@
 from modules.abstractModule import Module
 
 class Logger(Module):
-    type = 3
-    logfilePath = "input.log"
+    type = 'log'
     
-    def logToFile(self, log):
-        file = open(self.logfilePath, "a")
+    def logToFile(self, log, ip):
+        file = open(f"input_{ip}.log", "a")
         file.write(log + "\n")
         file.close()
     
     async def handleMessage(self, websocket, msg):
-        self.logToFile(msg)
+        self.logToFile(msg, websocket.remote_ip)
         await super().sendMessage(websocket)
         

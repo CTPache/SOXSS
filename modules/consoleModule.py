@@ -20,7 +20,10 @@ class ConsoleInWeb(Module):
 
     async def handleMessage(self, websocket, msg):
         msg['timestamp'] = time.time()
-        msg['host'] = getCurrent().remote_ip
+        if getCurrent():
+            msg['host'] = getCurrent().remote_ip
+        else:
+            msg['host'] = 'disconected'
         server.consoleOut = json.dumps(msg)
 
     async def sendMessage(self, websocket, msg):
@@ -28,12 +31,19 @@ class ConsoleInWeb(Module):
             cmd = comands.getComands()[msg.split(" ")[0]]
         except:
             cmd = comands.getComands()[comands.default]
+        
         result = cmd.execute(msg)
-        if cmd.sendsMessage:
-            await sendSecretMessage(websocket, result)
+        if websocket:
+            if cmd.sendsMessage:
+                await sendSecretMessage(websocket, result)
+            else:
+                await self.handleMessage(None, result)
         else:
-            await self.handleMessage(None, result)
-        return result
+            if isinstance(result, dict):
+                await self.handleMessage(None, result)
+            else:
+                await self.handleMessage(None, {})
+        print(result)
 
 
 '''

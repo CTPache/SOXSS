@@ -10,9 +10,10 @@ def removeSocket(websocket):
     sockets.remove(websocket)
 
 def getCurrent():
-#    try:
+    try:
         return sockets[current]
-#    except:
+    except:
+        return None
 #        print('Socket index out of range, default to 0.')
 #        current = 0
 #        return sockets[current]

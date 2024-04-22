@@ -21,17 +21,19 @@ class ConsoleHTTPRequestHandler(SimpleHTTPRequestHandler):
 
         contentLength = int(self.headers["Content-Length"])
         body = self.rfile.read(contentLength).decode("utf-8")
+        socket = ''
         if socksUtil.sockets.__len__() > 0:
-            last = consoleOut
-            await consoleMod.sendMessage(socksUtil.getCurrent(), body)
-            while last == consoleOut:
-                pass
-            response = bytes(consoleOut, "utf-8")
-            self.send_response(200)
-            self.send_header("Access-Control-Allow-Origin", "*")
-            self.send_header("Content-type", "application/json")
-            self.end_headers()
-            self.wfile.write(response)
+            socket = socksUtil.getCurrent()
+        last = consoleOut
+        await consoleMod.sendMessage(socket, body)
+        while last == consoleOut:
+            pass
+        response = bytes(consoleOut, "utf-8")
+        self.send_response(200)
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Content-type", "application/json")
+        self.end_headers()
+        self.wfile.write(response)
 
     def log_message(self, format: str, *args) -> None:
         return ""

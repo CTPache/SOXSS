@@ -1,7 +1,8 @@
 import json
 from modules.consoleComands.abstractComand import Comand
 
-
+# Deprecado, esto debería abrir una pestaña y la sintaxis ser:
+# mitm <indexSocket>
 class MITMComand(Comand):
     type = "mitm"
 

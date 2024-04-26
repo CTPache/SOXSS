@@ -1,4 +1,5 @@
 from modules.abstractModule import Module
+import socksUtil
 import threading
 from modules.MITMServer import cache, start_server
 
@@ -14,9 +15,8 @@ class MITMModule(Module):
         thread.start()
 
     async def handleMessage(self, websocket, msg):
-
-        self.socket = websocket
-        cache[msg["url"] + msg["method"]] = {
+        index = socksUtil.sockets.index(websocket)
+        cache[str(index) + msg["url"] + msg["method"]] = {
             "type": msg["contentType"],
             "content": msg["content"],
             "method": msg["method"],

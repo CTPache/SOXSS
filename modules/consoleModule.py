@@ -43,7 +43,7 @@ class ConsoleInWeb(Module):
                 await self.handleMessage(None, result)
             else:
                 await self.handleMessage(None, {})
-        print(result)
+        return result
 
 
 '''

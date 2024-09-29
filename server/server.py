@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 
+import cryptoUtil
+
 
 class CORSRequestHandler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
@@ -11,11 +13,16 @@ class CORSRequestHandler(SimpleHTTPRequestHandler):
         basepath = self.path.split("?")[0]
         self.send_header("Content-Type", f"{self.guess_type(basepath)}; charset=utf-8")
         self.send_header("Access-Control-Allow-Origin", "*")
-
         SimpleHTTPRequestHandler.end_headers(self)
 
-    def log_message(self, format: str, *args) -> None:
-        return ""
+    
+    def do_GET(self) -> None:
+        if self.path.endswith("webSocket.js"):
+            file = open("server/webSocket.js", "rb").read().decode("utf-8").replace("$key",cryptoUtil.secret_key).replace("$IV",cryptoUtil.iv).encode("utf-8")
+            self.wfile.write(file)
+        else:
+            return super().do_GET()
+            
 
 
 def main():

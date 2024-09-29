@@ -6,13 +6,14 @@ import json
 import threading
 from websockets import server, exceptions, WebSocketServerProtocol
 from modules import getModules
-from cryptoUtil import decrypt
+import cryptoUtil
 import socksUtil
 import server.server as httpServer
+import binascii
 
 modules, defaultModule = getModules.getModules()
 host = "0.0.0.0"
-introString = """
+introString = """\
 
 ____ ____ ____ _  _ ____ ____ 
 [__  |  | |     \/  [__  [__  
@@ -28,7 +29,7 @@ async def exec(websocket):
     try:
         while True:
             msg_enc = await websocket.recv()
-            message_from_client = json.loads(decrypt(msg_enc))
+            message_from_client = json.loads(cryptoUtil.decrypt(msg_enc))
             handler = modules[defaultModule]
             if message_from_client["type"] in modules:
                 handler = modules[message_from_client["type"]]

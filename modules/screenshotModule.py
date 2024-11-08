@@ -4,7 +4,6 @@ from PIL import Image
 import base64
 import io
 
-
 class ScreenshotModule(Module):
     type = 'screenshot'
 

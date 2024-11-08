@@ -2,7 +2,7 @@ from base64 import b64decode, b64encode
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import unpad
 
-
+#TODO: Genera una key por conexión y un iv por conexión, no uses estos valores en producción
 secret_key = "UmFuZG9tS2V5Rm9yQUVTIQ=="
 iv = "1020304050607080"
 
@@ -22,5 +22,4 @@ def encrypt(data: str) -> str:
     return b64encode(encrypted_data).decode("utf-8")
 
 async def sendSecretMessage(websocket, msg):
-    # TODO
     await websocket.send(encrypt(msg))

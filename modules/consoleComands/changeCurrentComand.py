@@ -22,5 +22,5 @@ class ListSocketsComand(Comand):
     sendsMessage = False
 
     def execute(self, payload):
-        return {"text": "\n" + json.dumps(socksUtil.listSockets(), separators=['\n', ': '],).replace('}', '').replace("{", ''),
+        return {"text": "\n" + json.dumps(socksUtil.listSockets(), separators=[',', ': '],),
                 "outputType": "info"}

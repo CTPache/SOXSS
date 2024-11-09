@@ -1,63 +1,157 @@
+/* Estilos generales */
 body {
     background-color: #333;
-    font-family: monospace;
-    color: white;
+    font-family: Arial, sans-serif;
+    color: #eee;
     margin: 0;
-    padding: 20px;
     display: flex;
     justify-content: center;
     align-items: center;
 }
 
-.terminal {
+.container {
+    display: flex;
+    height: 100vh;
+    width: 100vw;
+}
+
+/* Menú lateral */
+#sidebar {
+    width: 20%;
+    background-color: #444;
+    padding: 20px;
+    color: #eee;
+    overflow-y: auto;
+    box-shadow: 2px 0 5px rgba(0, 0, 0, 0.3);
+}
+
+#sidebar h2 {
+    margin-top: 0;
+    font-size: 1.2em;
+    font-weight: bold;
+}
+
+#clientList button {
+    background-color: #555;
+    color: #eee;
+    border: 1px solid #777;
+    padding: 10px;
     width: 100%;
+    margin-bottom: 10px;
+    cursor: pointer;
+    font-size: 1em;
+    transition: background-color 0.3s;
+}
+
+#clientList button:hover {
+    background-color: #666;
+}
+
+/* Contenedor principal con vista previa y consola apilados verticalmente */
+.main-content {
+    width: 80%;
+    display: flex;
+    flex-direction: column;
+    padding: 20px;
+    box-shadow: -2px 0 5px rgba(0, 0, 0, 0.3);
+}
+
+/* Estilos para el contenedor de vista previa */
+#screenshotPreview {
+    background-color: #333;
+    padding: 20px;
+    color: #eee;
+    text-align: left; /* Alinea el texto a la izquierda*/
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+    transition: all 0.3s ease; /* Transición suave para minimizar/maximizar */
+    cursor: pointer; /* Cursor para indicar que es clickeable */
+}
+
+#screenshotPreview h2 {
+    font-size: 1.2em;
+    font-weight: bold;
+    margin-right: 20px; 
+}
+
+/* Imagen de vista previa */
+#previewImage {
+    width: 100%;
+    height: auto;
+    transition: all 0.3s ease; /* Transición suave */
+}
+
+/* Estado minimizado de la vista previa */
+#previewImage.minimized {
+    height: 50px; /* Limita la altura del contenedor */
+    width: auto; /* Ajusta el ancho para que sea más pequeño*/
+}
+
+
+/* Terminal principal */
+.terminal {
     background-color: #222;
     border: 2px solid #555;
     padding: 2vh;
-}
-
-#btnGroup {
-    overflow: scroll;
-    color: white;
-    background-color: #222;
-    border: 2px solid #555;
-    padding: 2vh;
-}
-
-.btnCmd {
-    background-color: black;
-    color: white;
-    border: 2px solid #555;
-    padding: 2vh;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.3);
 }
 
 #log {
-    width: 100%;
-    height: 70vh;
-    background-color: black;
-    color: white;
+    height: 100%;
+    background-color: #111;
+    color: #ddd;
     overflow-y: auto;
     resize: none;
-    display: flex;
-    flex-direction: column-reverse;
+    padding: 10px;
+    font-size: 0.9em;
+    margin-bottom: 10px;
+    border-radius: 5px;
 }
 
 #inputcomand {
-    border: 1px solid black;
+    display: flex;
+    border: 1px solid #333;
+    border-radius: 5px;
     overflow: hidden;
 }
 
-#inputcomand>input {
+#inputcomand > input {
     width: 100%;
-    padding-top: 1vh;
-    padding-bottom: 1vh;
-    overflow: hidden;
+    padding: 10px;
     background-color: #333;
     color: #fff;
     border: none;
+    font-size: 1em;
 }
 
-/* Colores de los mensajes de consola*/
+#btnGroup {
+    margin-top: 10px;
+    display: flex;
+    justify-content: center;
+}
+
+.btnCmd {
+    background-color: #333;
+    color: #eee;
+    border: 2px solid #555;
+    padding: 10px;
+    font-size: 1em;
+    cursor: pointer;
+    border-radius: 5px;
+    transition: background-color 0.3s;
+}
+
+.btnCmd:hover {
+    background-color: #444;
+}
+
+/* Colores de los mensajes de consola */
 .inputMsg {
     padding: 0;
     margin: 1px;

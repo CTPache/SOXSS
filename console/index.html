@@ -7,20 +7,38 @@
     <link rel="stylesheet" href="console.css">
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="console.js"></script>
+    <script src="clientList.js"></script>
     <script src="loadScripts.js"></script>
 </head>
 
 <body>
-    <div class="terminal">
-        <div id="log"></div>
-        <form id="inputcomand"
-            onsubmit="sendConsole($('#inputText').val()).then(data =>logComand(data));return false">
-            <div onKeyPress="return checkSubmit(event)"></div>
-            <input id="inputText" type="text" placeholder="Input your comands here">
-        </form>
-        <div id="btnGroup">
-            <input type="button" class="btnCmd" onclick="window.open('http://localhost:8001', '_blank');return false"
-                value="MITM">
+    <div class="container">
+        <!-- Menú lateral -->
+        <aside id="sidebar">
+            <h2>Clientes Conectados</h2>
+            <div id="clientList">
+                <!-- Lista de clientes se generará dinámicamente -->
+            </div>
+        </aside>
+
+        <!-- Sección principal con vista previa y consola -->
+        <div class="main-content">
+            <!-- Vista previa de la captura de pantalla -->
+            <div id="screenshotPreview">
+                <h2>Vista Previa</h2>
+                <img id="previewImage" src="" alt="Captura de pantalla" />
+            </div>
+
+            <!-- Panel de control (Consola) -->
+            <div class="terminal">
+                <div id="log"></div>
+                <form id="inputcomand" onsubmit="sendConsole($('#inputText').val()).then(data => logComand(data));return false">
+                    <input id="inputText" type="text" placeholder="Input your commands here">
+                </form>
+                <div id="btnGroup">
+                    <input type="button" class="btnCmd" onclick="window.open('http://localhost:8001', '_blank');return false" value="MITM">
+                </div>
+            </div>
         </div>
     </div>
 </body>

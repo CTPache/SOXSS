@@ -31,7 +31,7 @@ The console is a simple dashboard with a list of connections and a terminal. The
 * ``load <filename>`` - Loads a file from the server as a ``<script>`` tag.
 * ``downloadFile <localFile> <filename>`` - Downloads a file on the client's machine. The file is sent as a base64 string, and it is decoded on the client's side. The file is saved on the client's machine with the name that is specified in the command.
 * ``screenshot`` - Takes a screenshot of the client's current page.
-* ```mitm`` - Starts a man in the middle connection (details bellow).
+* ``mitm`` - Starts a man in the middle connection (details bellow).
 * ``exit`` - Closes the connection with the selected client.
 
 Any other command will be sent to the client to execute as javascript code.

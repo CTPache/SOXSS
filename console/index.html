@@ -16,6 +16,7 @@
         <!-- Menú lateral -->
         <aside id="sidebar">
             <h2>Clientes Conectados</h2>
+            <input type="button" class="btnCmd" onclick="loadClientList()" value="reload">
             <div id="clientList">
                 <!-- Lista de clientes se generará dinámicamente -->
             </div>
@@ -32,11 +33,14 @@
             <!-- Panel de control (Consola) -->
             <div class="terminal">
                 <div id="log"></div>
-                <form id="inputcomand" onsubmit="sendConsole($('#inputText').val()).then(data => logComand(data));return false">
+                <form id="inputcomand"
+                    onsubmit="sendConsole($('#inputText').val()).then(data => logComand(data));return false">
                     <input id="inputText" type="text" placeholder="Input your commands here">
                 </form>
                 <div id="btnGroup">
-                    <input type="button" class="btnCmd" onclick="window.open('http://localhost:8001', '_blank');return false" value="MITM">
+                    <!--
+                        <input type="button" class="btnCmd" onclick="window.open('http://localhost:8001', '_blank');return false" value="MITM">
+                    -->
                 </div>
             </div>
         </div>

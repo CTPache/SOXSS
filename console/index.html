@@ -34,7 +34,7 @@
             <div class="terminal">
                 <div id="log"></div>
                 <form id="inputcomand"
-                    onsubmit="sendConsole($('#inputText').val()).then(data => logComand(data));return false">
+                    onsubmit="$('#log').prepend($('<pre class=inputMsg></pre>').text($('#inputText').val()));sendConsole($('#inputText').val()).then(data => logComand(data));return false">
                     <input id="inputText" type="text" placeholder="Input your commands here">
                 </form>
                 <div id="btnGroup">

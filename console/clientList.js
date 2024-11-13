@@ -1,5 +1,6 @@
 // Lista de clientes conectados (simulación de ejemplo)
-var clients
+var clients = []
+currentClient = 0
 // Cargar la lista de clientes
 async function loadClientList() {
     console.log("Loading clients")
@@ -17,6 +18,7 @@ async function loadClientList() {
 
 // Solicitar captura de pantalla al cliente específico
 async function requestScreenshot(client) {
+    currentClient = client
     sendConsole("change " + client)
     await sendConsole("screenshot")
     document.getElementById('previewImage').src = `cache/${clients[client]}.png`

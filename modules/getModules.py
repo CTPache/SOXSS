@@ -1,13 +1,11 @@
 from modules.loggerModule import Logger
-from modules.consoleModule import  ConsoleInWeb #, ConsoleOut, ConsoleIn
+from modules.consoleModule import  ConsoleInWeb 
 from modules.screenshotModule import ScreenshotModule
 from modules.MITMModule import MITMModule
 
 modules = {
     Logger.type: Logger(),
-#    ConsoleIn.type: ConsoleIn(),
     ConsoleInWeb.type: ConsoleInWeb(),
-#    ConsoleOut.type: ConsoleOut(),
     ScreenshotModule.type: ScreenshotModule(),
     MITMModule.type: MITMModule()
 }

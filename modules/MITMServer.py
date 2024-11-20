@@ -3,6 +3,7 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 import json
 import socksUtil
 import cryptoUtil
+import datetime
 
 host = "localhost"
 port = 8001
@@ -21,20 +22,25 @@ class MITMHTTPRequestHandler(BaseHTTPRequestHandler):
 
         if "favicon" in self.path:
             return
-        skt = int(self.path.split('/')[1]) # índice del socket
-        path = '/' + self.path.split('/')[2] # path que se va a consultar en el cliente, sin el índice
-        response = {}
-        cacheKey = str(skt) + path + method
+        args = self.path.split('/')
+        skt = int(args[1]) # índice del socket
+        path = 'base_url'
+        if len(args) > 2:
+            path = args[2] # path que se va a consultar en el cliente, sin el índice
         
         # no devolver el script del websocket para no crear nuevas conexiones
-        if "websocket.js" in path.lower():
+        if "websocket.js" in str(path).lower():
             return
+        print(path)
+        response = {}
+        cacheKey = str(datetime.datetime.now())
         
         # Construye el objeto de la request
         request = {
             "comand": "mitm",
             "method": method,
             "url": path,
+            "key": cacheKey
         }
         
         # Si es POST incluye el body
@@ -55,6 +61,7 @@ class MITMHTTPRequestHandler(BaseHTTPRequestHandler):
         self.send_header("Access-Control-Allow-Origin", "*")
         self.end_headers()
         self.wfile.write(response["content"].replace('href=\"/', f'href=\"/{skt}/').encode("utf-8"))
+        cache.pop(cacheKey)
 
     def log_message(self, format: str, *args) -> None:
         return ""

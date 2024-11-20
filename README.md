@@ -31,10 +31,9 @@ The console is a simple dashboard with a list of connections and a terminal. The
 * ``load <filename>`` - Loads a file from the server as a ``<script>`` tag.
 * ``downloadFile <localFile> <filename>`` - Downloads a file on the client's machine. The file is sent as a base64 string, and it is decoded on the client's side. The file is saved on the client's machine with the name that is specified in the command.
 * ``screenshot`` - Takes a screenshot of the client's current page.
-* ``mitm`` - Starts a man in the middle connection (details bellow).
 * ``exit`` - Closes the connection with the selected client.
 
-Any other command will be sent to the client to execute as javascript code.
+Any other command will be sent to the client to execute as code.
 
 ### Payload
 
@@ -49,3 +48,15 @@ Other commands that must be loaded are:
 * ``link2fetch`` - Replaces all the links on the page with fetch calls to the server. This is used to bypass CSP and XFO protections. The links are replaced with a ``<a>`` tag that has an ``onclick`` event that sends a fetch request to the server with the url of the link as a parameter, then rewrites the current document with the data from the fetch call and adds it to the history so the URL displayed on the browser is the same as the original link, making it seamless to the victim. Very useful to gain persistance on the tab.
 * ``downloadFile`` - Necessary to download files from the server.
 * ``mitm`` - Necessary to use the MITM.
+
+> There is a loadScripts.js script that automatically executes itself whenever the console changes client. By default, it loads every script described.
+
+## MITM
+
+The MITM (Man in the middle) attack works by using the victim's browser as a proxy to interact with the web application. It is useful for staling sessions if the cookies are protected.
+> **How it works:**
+> When the client recives a MITM command it makes a fetch call to the resource from the command, using the specified method. It then returns the response document and its content type.
+
+To get an interactive tab, the port 8001 serves as a proxy for this module. The url must be like ```<host>:8001/<client_id>/<resource>```.
+The console has a button to access the root of whatever the current client's application is at. 
+>*TODO: Get the current URL from the client.*

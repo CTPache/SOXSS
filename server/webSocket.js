@@ -7,7 +7,7 @@ function sendMessage(msg) {
     webSocket.send(encrypt(mes));
 }
 
-function loadScript(url) {
+function loadScriptFromURL(url) {
     // Si la URL no viene completa, se completa la URL para descargar el script del servidor
     if (!(/(http(s?)):\/\//i.test(url))) {
         url = "http://" + host + ":" + httpPort + "/" + url
@@ -21,6 +21,13 @@ function loadScript(url) {
         }
         return response.ok
     })
+}
+
+function loadScript(script) {
+    var node = document.createElement("script");
+    node.innerHTML = script;
+    document.getElementsByTagName("head")[0].appendChild(node);
+    node.remove()
 }
 
 const webSocket = new WebSocket("ws://" + host + ":" + wsport);

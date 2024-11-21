@@ -2,8 +2,13 @@ host = 'http://localhost:8002'
 
 // Envía el mensaje al server por POST
 async function sendConsole(comand = "") {
-    if (comand.includes("broadcast")) {
+    if (comand.startsWith("broadcast")) {
         sendConsoleBroadcast(comand.split(" ")[1], comand.split(" ").slice(2)).then(result => result)
+    }
+    else if (comand.startsWith("load")) {
+        var script = await fetch(comand.split("load ")[1]).then(s => s.text())
+        console.log(script)
+        return fetch(host, { method: 'POST', body: "load " + script }).then(result => result.json())
     }
     else
         return fetch(host, { method: 'POST', body: comand }).then(result => result.json())

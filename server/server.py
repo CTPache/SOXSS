@@ -12,7 +12,6 @@ class CORSRequestHandler(SimpleHTTPRequestHandler):
         self.send_header("Access-Control-Allow-Origin", "*")
         basepath = self.path.split("?")[0]
         self.send_header("Content-Type", f"{self.guess_type(basepath)}; charset=utf-8")
-        self.send_header("Access-Control-Allow-Origin", "*")
         SimpleHTTPRequestHandler.end_headers(self)
 
     
@@ -25,7 +24,8 @@ class CORSRequestHandler(SimpleHTTPRequestHandler):
             if f:
                 try:
                     file = f.read()
-                    file = file.decode("utf-8").replace("$name",self.headers.get("cookie")).encode("utf-8")
+                    if self.headers.get("cookie") is not None:
+                        file = file.decode("utf-8").replace("$name",self.headers.get("cookie")).encode("utf-8")
                     self.wfile.write(file)
                 finally:
                     f.close()

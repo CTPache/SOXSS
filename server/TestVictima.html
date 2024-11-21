@@ -7,13 +7,20 @@
 
 <body>
     <h1>WebSocket Test</h1>
+    <h2>Hola, <span id="name">$name</span></h2>
+    <script>
+        function setNameCookie() {
+            document.cookie = 'name=' + document.getElementById("usuario").value
+        }
+    </script>
     <a href="/Test.html">LINK</a>
     <a href="https://google.es">Ext LINK</a>
-    <form action="#">
+    <form onsubmit="setNameCookie()" action="#">
         <label for="usuario">User</label>
         <input id="usuario" type="text" />
         <label for="password">Password</label>
         <input id="password" type="password" />
+        <input type="submit" value="Login"/>
     </form>
 
 </body>

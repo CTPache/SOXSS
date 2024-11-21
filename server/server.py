@@ -21,7 +21,15 @@ class CORSRequestHandler(SimpleHTTPRequestHandler):
             file = open("server/webSocket.js", "rb").read().decode("utf-8").replace("$key",cryptoUtil.secret_key).replace("$IV",cryptoUtil.iv).encode("utf-8")
             self.wfile.write(file)
         else:
-            return super().do_GET()
+            f = self.send_head()
+            if f:
+                try:
+                    file = f.read()
+                    file = file.decode("utf-8").replace("$name",self.headers.get("cookie")).encode("utf-8")
+                    self.wfile.write(file)
+                finally:
+                    f.close()
+            
             
 
 

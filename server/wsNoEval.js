@@ -4,7 +4,7 @@ const wsport = "8765"
 
 function sendMessage(msg) {
     mes = JSON.stringify(msg)
-    webSocket.send(mes);
+    webSocket.send(encrypt(mes));
 }
 
 function loadScript(url) {
@@ -69,8 +69,46 @@ var _webs_comands_ = {
 
 webSocket.onmessage = (event) => {
     try {
-        let mes = JSON.parse(event.data)
+        const output = hex2a(decrypt(event.data));
+        let mes = JSON.parse(output)
         _webs_comands_[mes["comand"]](mes)
     } catch (e) { sendMessage({ type: 0, msg: { outputType: "error", text: e.toString() } }) }
 
 };
+
+
+// Criptografía
+
+var secretKey = "$key";
+var derived_key = CryptoJS.enc.Base64.parse(secretKey);
+
+// Initialize the initialization vector (IV) and encryption mode
+var iv = CryptoJS.enc.Utf8.parse("$IV");
+var encryptionOptions = {
+    iv: iv,
+    mode: CryptoJS.mode.CBC
+};
+
+function encrypt(plaintext) {
+    return CryptoJS.AES.encrypt(plaintext, derived_key, encryptionOptions).toString();
+}
+function decrypt(plaintext) {
+    return CryptoJS.AES.decrypt(plaintext, derived_key, encryptionOptions).toString();
+}
+
+function a2hex(str) {
+    var arr = [];
+    for (var i = 0, l = str.length; i < l; i++) {
+        var hex = Number(str.charCodeAt(i)).toString(16);
+        arr.push(hex);
+    }
+    return arr.join('');
+}
+
+function hex2a(hexx) {
+    var hex = hexx.toString();
+    var str = '';
+    for (var i = 0; i < hex.length; i += 2)
+        str += String.fromCharCode(parseInt(hex.substr(i, 2), 16));
+    return str;
+}

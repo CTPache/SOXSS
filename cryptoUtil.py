@@ -11,7 +11,7 @@ def decrypt(data: str) -> str:
     derived_key = b64decode(secret_key)
     cipher = AES.new(derived_key, AES.MODE_CBC, iv.encode('utf-8'))
     decrypted_data = cipher.decrypt(ciphertext)
-    print(unpad(decrypted_data, 16).decode("utf-8"))
+    # print(unpad(decrypted_data, 16).decode("utf-8"))
     return unpad(decrypted_data, 16).decode("utf-8")
 
 def encrypt(data: str) -> str:

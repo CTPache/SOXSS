@@ -53,7 +53,7 @@ Other commands that must be loaded are:
 
 ## MITM
 
-The MITM (Man in the middle) attack works by using the victim's browser as a proxy to interact with the web application. It is useful for staling sessions if the cookies are protected.
+The MITM (Man in the middle) attack works by using the victim's browser as a proxy to interact with the web application. It is useful for stealing sessions if the cookies are protected.
 > **How it works:**
 > When the client recives a MITM command it makes a fetch call to the resource from the command, using the specified method. It then returns the response document and its content type.
 

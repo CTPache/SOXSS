@@ -22,5 +22,5 @@ def getCurrent():
 def listSockets():
     res = {}
     for i in range(sockets.__len__()):
-        res[str(i)] = str(sockets[i].remote_ip)
+        res[str(i)] = str(sockets[i].id)
     return res

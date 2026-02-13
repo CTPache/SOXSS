@@ -16,7 +16,7 @@ class MITMModule(Module):
 
     async def handleMessage(self, websocket, msg):
         index = socksUtil.sockets.index(websocket)
-        cache[str(index) + msg["url"] + msg["method"]] = {
+        cache[msg["key"]] = {
             "type": msg["contentType"],
             "content": msg["content"],
             "method": msg["method"],

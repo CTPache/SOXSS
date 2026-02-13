@@ -1,4 +1,3 @@
-loadScript('scripts/html2canvas.min.js')
 _webs_comands_['screenshot'] = function (mes) {
     const screenshotTarget = document.body
     html2canvas(screenshotTarget).then((canvas) => {

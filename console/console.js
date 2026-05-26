@@ -1,18 +1,11 @@
 var host = 'http://localhost:8002'
+var commandHistory = [];
+var historyIndex = 0;
+var draftCommand = "";
 
 // Envía el mensaje al server por POST
 async function sendConsole(Command = "") {
-    let body = Command;
-    if (Command.startsWith("load")) {
-        try {
-            const script = await fetch(Command.split("load ")[1]).then(s => s.text());
-            body = "load " + script;
-        } catch (e) {
-            return { outputType: "error", text: "Failed to load local script: " + e.message, host: "local" };
-        }
-    }
-    
-    return fetch(host, { method: 'POST', body: body })
+    return fetch(host, { method: 'POST', body: Command })
         .then(res => res.json())
         .catch(err => ({ outputType: "error", text: "Server unreachable: " + err.message, host: "local" }));
 }
@@ -21,6 +14,10 @@ function handleConsoleSubmit() {
     const input = document.getElementById('inputText');
     const val = input.value.trim();
     if (!val) return;
+
+    commandHistory.push(val);
+    historyIndex = commandHistory.length;
+    draftCommand = "";
     
     // Add to log immediately as input
     appendLog({ outputType: 'input', text: val, host: 'you' });
@@ -31,6 +28,43 @@ function handleConsoleSubmit() {
     
     input.value = '';
 }
+
+function handleHistoryNavigation(event) {
+    const input = event.target;
+    if (!input || input.id !== 'inputText') return;
+
+    if (event.key === 'ArrowUp') {
+        event.preventDefault();
+        if (commandHistory.length === 0) return;
+
+        if (historyIndex === commandHistory.length) {
+            draftCommand = input.value;
+        }
+
+        historyIndex = Math.max(0, historyIndex - 1);
+        input.value = commandHistory[historyIndex] || "";
+        input.setSelectionRange(input.value.length, input.value.length);
+    }
+
+    if (event.key === 'ArrowDown') {
+        event.preventDefault();
+        if (commandHistory.length === 0) return;
+
+        historyIndex = Math.min(commandHistory.length, historyIndex + 1);
+        if (historyIndex === commandHistory.length) {
+            input.value = draftCommand;
+        } else {
+            input.value = commandHistory[historyIndex] || "";
+        }
+        input.setSelectionRange(input.value.length, input.value.length);
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    const input = document.getElementById('inputText');
+    if (!input) return;
+    input.addEventListener('keydown', handleHistoryNavigation);
+});
 
 function appendLog(data) {
     if (!data) return;

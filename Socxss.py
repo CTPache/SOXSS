@@ -33,17 +33,23 @@ async def exec(websocket):
     socksUtil.addSocket(websocket)
     try:
         while True:
-            msg_enc = await websocket.recv()
-            message_from_client = json.loads(cryptoUtil.decrypt(msg_enc, sid))
-            handler = modules[defaultModule]
-            if message_from_client["type"] in modules:
-                handler = modules[message_from_client["type"]]
-            if "msg" in message_from_client:
-                await handler.handleMessage(websocket, message_from_client["msg"])
-            else:
-                await handler.handleMessage(websocket, {"msg": "OK"})
+            try:
+                msg_enc = await websocket.recv()
+                message_from_client = json.loads(cryptoUtil.decrypt(msg_enc, sid))
+                handler = modules[defaultModule]
+                if message_from_client["type"] in modules:
+                    handler = modules[message_from_client["type"]]
+                if "msg" in message_from_client:
+                    await handler.handleMessage(websocket, message_from_client["msg"])
+                else:
+                    await handler.handleMessage(websocket, {"msg": "OK"})
+            except exceptions.ConnectionClosed:
+                raise
+            except Exception as e:
+                print(f"Message processing error from {remote_ip} (SID: {sid}): {e}")
     except exceptions.ConnectionClosed:
         print(f"Closed by client {remote_ip}")
+    finally:
         if websocket in socksUtil.sockets:
             if socksUtil.sockets.index(websocket) == socksUtil.current:
                 socksUtil.current = 0

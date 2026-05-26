@@ -76,7 +76,7 @@ class MITMHTTPRequestHandler(BaseHTTPRequestHandler):
         elif isinstance(content, bytes):
             # For binary content, we don't rewrite
             self.wfile.write(content)
-        cache.pop(cacheKey)
+        cache.pop(cacheKey, None)
 
     def log_message(self, format: str, *args) -> None:
         return ""

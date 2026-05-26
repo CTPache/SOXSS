@@ -14,6 +14,25 @@ Advanced XSS Command and Control (C2) with WebSockets, Per-Session Encryption, a
    - `-f`: Fresh start (cleans console logs and screenshots).
    - `-q`: Quiet mode (hides the banner).
 
+## Testing
+SOXSS includes both fast unit tests and browser-based Selenium E2E tests.
+
+Fast suite:
+```bash
+python -m unittest tests.test_runtime_unit tests.test_modules_unit tests.test_console_commands_unit tests.test_server_modules_unit -v
+```
+
+Selenium E2E suite:
+```bash
+python -m unittest tests.selenium.test_soxss_selenium -v
+```
+
+Coverage report for the fast suite:
+```bash
+coverage run -m unittest tests.test_runtime_unit tests.test_modules_unit tests.test_console_commands_unit tests.test_server_modules_unit -v
+coverage report -m
+```
+
 ## Network Configuration (`config.py`)
 All network settings are centralized in `config.py`. You can independently configure:
 * **Payload Server**: Serves initial scripts and payloads (default port 8000).

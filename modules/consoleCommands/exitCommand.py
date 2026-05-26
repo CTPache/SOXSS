@@ -1,4 +1,5 @@
 from modules.consoleCommands.abstractCommand import Command
+import json
 
 
 class ExitCommand(Command):
@@ -6,4 +7,5 @@ class ExitCommand(Command):
     sendsMessage = True
 
     def execute(self, payload):
-        exit()
+        # Keep the C2 process alive; request remote session shutdown instead.
+        return json.dumps({"Command": "disable"})

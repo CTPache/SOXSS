@@ -1,5 +1,7 @@
 websockets
 pillow
-pycryptodomex
+pycryptodome
 aiohttp
 requests
+selenium
+coverage

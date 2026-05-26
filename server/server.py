@@ -32,9 +32,6 @@ class CORSRequestHandler(SimpleHTTPRequestHandler):
             )
             self.wfile.write(file)
         else:
-<<<<<<< HEAD
-            return super().do_GET()
-=======
             f = self.send_head()
             if f:
                 try:
@@ -46,7 +43,6 @@ class CORSRequestHandler(SimpleHTTPRequestHandler):
                     f.close()
             
             
->>>>>>> e555594688ce80c742f1401e128f65a376deac94
 
 
 def main():

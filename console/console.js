@@ -1,51 +1,54 @@
-host = 'http://localhost:8002'
+var host = 'http://localhost:8002'
 
 // Envía el mensaje al server por POST
-async function sendConsole(comand = "") {
-    if (comand.startsWith("broadcast")) {
-        sendConsoleBroadcast(comand.split(" ")[1], comand.split(" ").slice(2)).then(result => result)
+async function sendConsole(Command = "") {
+    let body = Command;
+    if (Command.startsWith("load")) {
+        try {
+            const script = await fetch(Command.split("load ")[1]).then(s => s.text());
+            body = "load " + script;
+        } catch (e) {
+            return { outputType: "error", text: "Failed to load local script: " + e.message, host: "local" };
+        }
     }
-    else if (comand.startsWith("load")) {
-        var script = await fetch(comand.split("load ")[1]).then(s => s.text())
-        console.log(script)
-        return fetch(host, { method: 'POST', body: "load " + script }).then(result => result.json())
-    }
-    else
-        return fetch(host, { method: 'POST', body: comand }).then(result => result.json())
+    
+    return fetch(host, { method: 'POST', body: body })
+        .then(res => res.json())
+        .catch(err => ({ outputType: "error", text: "Server unreachable: " + err.message, host: "local" }));
 }
 
-async function sendConsoleBroadcast(comand, _clients) {
-    let broadcastClients = []
-    let ret = []
-    if (_clients == "all")
-        broadcastClients = Object.keys(clients)
-    else if (_clients.length > 0)
-        broadcastClients = _clients
-    broadcastClients.forEach(element => {
-        sendConsole("change " + element)
-        sendConsole(comand).then(x => {
-            ret.push(x)
-            logComand(x)
-        })
+function handleConsoleSubmit() {
+    const input = document.getElementById('inputText');
+    const val = input.value.trim();
+    if (!val) return;
+    
+    // Add to log immediately as input
+    appendLog({ outputType: 'input', text: val, host: 'you' });
+    
+    sendConsole(val).then(data => {
+        appendLog(data);
     });
-    sendConsole("change " + currentClient)
-    return ret
+    
+    input.value = '';
 }
 
-// Incluye el comando y el valor de retorno
-async function logComand(data) {
-    if (data == undefined)
-        return
-    console.log(data)
-    let outputMsg = $("<pre class=inputMsg>></pre>")
-    outputMsg.text(data.host + "> " + data.text)
-    outputMsg.addClass(data.outputType)
-    $('#log').prepend(outputMsg)
+function appendLog(data) {
+    if (!data) return;
+    
+    const log = document.getElementById('log');
+    const time = new Date().toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    
+    const entry = document.createElement('div');
+    entry.className = 'log-entry';
+    
+    entry.innerHTML = `
+        <span class="log-time">[${time}]</span>
+        <span class="log-content ${data.outputType}">${data.host ? data.host + '> ' : ''}${data.text || ''}</span>
+    `;
+    
+    log.appendChild(entry);
+    log.scrollTop = log.scrollHeight;
 }
 
-//Envía el comando si detecta ENTER pulsada
-function checkSubmit(e) {
-    if (e && e.keyCode == 13) {
-        document.forms[0].submit();
-    }
-}
+// Deprecated old logCommand
+async function logCommand(data) { appendLog(data); }

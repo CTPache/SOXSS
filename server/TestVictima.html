@@ -12,6 +12,7 @@
         function setNameCookie() {
             document.cookie = 'name=' + document.getElementById("usuario").value
         }
+        document.getElementById("name").innerText = document.cookie.split("=")[1];
     </script>
     <a href="/Test.html">LINK</a>
     <a href="https://google.es">Ext LINK</a>
@@ -20,7 +21,7 @@
         <input id="usuario" type="text" />
         <label for="password">Password</label>
         <input id="password" type="password" />
-        <input type="submit" value="Login"/>
+        <input type="submit" value="Login" />
     </form>
 
 </body>

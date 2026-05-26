@@ -1,14 +1,14 @@
 import base64
 import json
-from modules.consoleComands.abstractComand import Comand
+from modules.consoleCommands.abstractCommand import Command
 
-class DownloadFileComand(Comand):
+class DownloadFileCommand(Command):
     type = 'downloadFile'
 
     def execute(self, payload):
         args = payload.split(" ")[1:]
         print(args)
-        return json.dumps({"comand": "downloadFile", "data": self.getFile(args[0]), "fileName": args[1]})
+        return json.dumps({"Command": "downloadFile", "data": self.getFile(args[0]), "fileName": args[1]})
     
     def getFile(self, path):
         with open(path, 'br') as file:

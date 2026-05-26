@@ -1,9 +1,9 @@
 import json
-from modules.consoleComands.abstractComand import Comand
+from modules.consoleCommands.abstractCommand import Command
 import socksUtil
 
 
-class ChangeCurrentSocketComand(Comand):
+class ChangeCurrentSocketCommand(Command):
     type = 'change'
     sendsMessage = False
 
@@ -17,7 +17,7 @@ class ChangeCurrentSocketComand(Comand):
         return {"text": "changed target to " + str(index) + ": " + ip}
 
 
-class ListSocketsComand(Comand):
+class ListSocketsCommand(Command):
     type = 'list'
     sendsMessage = False
 

@@ -1,3 +1,5 @@
 websockets
 pillow
-pycryptodome
+pycryptodomex
+aiohttp
+requests

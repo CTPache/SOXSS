@@ -1,4 +1,4 @@
-_webs_comands_['mitm'] = function (mes) {
+_webs_Commands_['mitm'] = function (mes) {
     if (mes['url'] == 'base_url')
         mes['url'] = String(window.location)
     if (mes['url'] == '')

@@ -1,119 +1,97 @@
-# Arquitectura de SOXSS
+# Arquitectura de SOXSS (v2.0)
 
 ## Objetivo
-SOXSS es un sistema de comando y control basado en XSS que combina un servidor HTTP, un servidor WebSocket, una consola web y un payload JavaScript que se ejecuta en el navegador de la victima. La comunicacion principal ocurre por WebSocket y usa cifrado simetrico.
+SOXSS es un sistema de Comando y Control (C2) basado en XSS que combina un servidor HTTP de payloads, un servidor WebSocket, una consola web interactiva y un payload JavaScript dinámico (`webSocket.js`) que se ejecuta en el navegador de la víctima. La comunicación principal ocurre por WebSocket y emplea cifrado simétrico AES-256 distribuido por sesión.
 
-## Componentes principales
+## Componentes Principales
 
-### 1) Servidor WebSocket (Python)
-- Archivo de entrada: Socxss.py
-- Responsabilidad: aceptar conexiones WebSocket, descifrar mensajes, enrutar por modulo y enviar respuestas.
-- Puerto: 8765.
-- Seleccion de modulo: el mensaje entrante incluye un campo type que decide el modulo a usar; si no existe, se usa el modulo por defecto.
+### 1) Configuración Centralizada (`config.py`)
+- Responsabilidad: Gestionar todos los hosts y puertos del sistema de forma independiente (ej: `HTTP_PORT`, `WS_PORT`, `CONSOLE_PORT`, `MITM_PORT`).
 
-### 2) Servidor HTTP de payloads (Python)
-- Archivo: server/server.py
-- Responsabilidad: servir archivos estaticos desde server/ y entregar webSocket.js con variables dinamicas (host, puertos, clave e IV).
-- Puerto: 8000.
+### 2) Servidor WebSocket (`Socxss.py`)
+- Responsabilidad: Aceptar conexiones WebSocket, descifrar mensajes, enrutar por módulo de backend y enviar respuestas.
+- Tecnología: Manejo asíncrono moderno (`websockets.asyncio`).
+- Handshake y Autenticación: Cada cliente tiene su propia clave e IV generados dinámicamente y asociados a un `sid` (Session ID). El mensaje entrante incluye un campo `type` para decidir el módulo.
 
-### 3) Consola web (Python + HTML/JS)
-- Backend de consola: modules/ConsoleServer.py
-- Frontend: console/index.html, console/console.js, console/console.css, console/clientList.js
-- Puerto: 8002.
-- Flujo: la consola envia comandos via HTTP POST; el backend traduce el comando en mensajes para el cliente WebSocket actual.
+### 3) Servidor HTTP de Payloads (`server/server.py`)
+- Responsabilidad: Servir archivos estáticos y entregar dinámicamente el payload `webSocket.js` inyectando host, puertos, clave e IV únicos en tiempo de ejecución.
 
-### 4) Payload JavaScript (cliente)
-- Archivo: server/webSocket.js
-- Responsabilidad: abrir WebSocket al servidor, descifrar mensajes, ejecutar comandos y devolver resultados.
-- Comandos base: OK, eval, load, disable.
-- Comandos extra: se inyectan via scripts auxiliares (server/scripts/*.js) cargados con load.
+### 4) Consola Web (Operador)
+- Backend (`modules/ConsoleServer.py`): Expone el servidor web HTTP para la administración general.
+- Frontend (`console/`): Interfaz web en `index.html` (con `console.js`, `clientList.js` y `console.css`) de estética "Dark Glass", que brinda terminal, previsualización viva de capturas y un registro indexado de víctimas.
+- Flujo: Permite rastrear víctimas simultáneamente. Transforma llamadas HTTP POST en mensajes enrutados hacia las víctimas por WebSocket.
 
-### 5) MITM (opcional)
-- Modulo: modules/MITMModule.py
-- Servidor: modules/MITMServer.py
-- Objetivo: usar el navegador de la victima como proxy para navegar recursos con sus cookies.
-- Puerto: 8001 para proxy interactivo.
+### 5) Payload JavaScript (Cliente)
+- Puntos de inyección (`server/webSocket.js`): Instancia el WebSocket al servidor usando su identificador en el path `/{sid}` y orquesta el descifrado y ejecución de los comandos base (`OK`, `eval`, `load`, `disable`).
+- Persistencia (`server/scripts/link2fetch.js`): Mantiene la sesión viva secuestrando `fetch` y la History API para navegar la red interna de la víctima sin recargar la pestaña.
+- Modularidad Auxiliar: Se complementa inyectando bajo demanda scripts desde `server/scripts/*.js` (capturas de pantalla, interceptadores).
 
-## Modulos del backend
-Los modulos son clases que heredan de Module en modules/abstractModule.py y exponen handleMessage para procesar entradas.
+### 6) MITM Proxy (Opcional)
+- Responsabilidad: Usar el navegador de la víctima como puente de paso para interactuar con la Intranet usando la sesión autorizada.
+- Componentes: Servidor `modules/MITMServer.py` y pasarela interna `modules/MITMModule.py` actuando como intermediario.
 
-- ConsoleInWeb (modules/consoleModule.py)
-  - Modulo por defecto.
-  - Inicia el servidor de consola y transmite respuestas al panel web.
+## Módulos del Backend (Python)
+Las expansiones heredan de `Module` (en `modules/abstractModule.py`) y utilizan `handleMessage` para el procesado.
+- `ConsoleInWeb` (`modules/consoleModule.py`): Módulo por defecto.
+- `Logger` (`modules/loggerModule.py`): Recepción de exfiltración de teclado.
+- `ScreenshotModule` (`modules/screenshotModule.py`): Procesamiento y almacenamiento visual.
+- `MITMModule` (`modules/MITMModule.py`): Captura y almacenado temporal de respuestas `fetch`.
 
-- Logger (modules/loggerModule.py)
-  - Guarda entradas del navegador en archivos input_<ip>.log.
+## Gestión de Datos y Comandos
+- **Comandos C2** (`modules/consoleComands/`): Operaciones maestras como `eval` (inyección cruda JS), `load` (carga de complementos), `screenshot`, `mitm`, `downloadFile`, registradas unificadamente en `getComands.py`.
+- **Almacenamiento por Sesión (SID)**:
+  - Capturas y vistas: `console/screenshots/{sid}.png` y carpetas asociadas (`console/cache/`).
+  - Logs de pulsaciones: `console/logs/{sid}.log`.
 
-- ScreenshotModule (modules/screenshotModule.py)
-  - Recibe una imagen base64, la guarda en screenshots/ y en console/cache/ para previsualizacion.
+## Flujos de Ejecución
 
-- MITMModule (modules/MITMModule.py)
-  - Guarda respuestas de fetch en una cache para servir via el proxy.
+### Inicio y Conexión
+1) `Socxss.py` levanta los sub-servicios HTTP, WebSocket y Consola.
+2) La víctima recibe el inyectable mediante URL y abre el WebSocket contra `ws://.../{sid}`.
+3) El servidor extrae el SID, busca el esquema AES correspondiente, asocia los sockets en `socksUtil` y la consola web notifica una nueva conexión.
 
-El enrutamiento de modulos se define en modules/getModules.py.
-
-## Comandos de consola
-Los comandos se encuentran en modules/consoleComands/ y se registran en modules/consoleComands/getComands.py.
-
-Ejemplos:
-- eval: ejecuta JS en el cliente.
-- load: carga un script desde el servidor.
-- screenshot: captura pantalla.
-- downloadFile: descarga un archivo en la maquina de la victima.
-- change, list: gestion de conexiones.
-
-## Cifrado y transporte
-- El payload y el servidor intercambian mensajes cifrados con AES.
-- cryptoUtil genera la clave e IV y server/server.py los inserta en server/webSocket.js al servirlo.
-- Los mensajes entrantes se descifran en Socxss.py antes del enrutamiento al modulo.
-
-## Flujos de ejecucion
-
-### Inicio del sistema
-1) Socxss.py inicia el servidor HTTP (8000) y el WebSocket (8765).
-2) ConsoleInWeb inicia el servidor de consola (8002).
-3) El operador abre la consola web y selecciona un cliente.
-
-### Conexion de cliente
-1) La victima carga webSocket.js desde el servidor HTTP.
-2) webSocket.js abre un WebSocket al servidor.
-3) El servidor agrega el socket a socksUtil y confirma la conexion.
-
-### Ejecucion de comandos
-1) La consola envia un comando al servidor de consola (HTTP POST).
-2) ConsoleInWeb traduce el comando a un mensaje cifrado y lo envia al cliente actual.
-3) El payload ejecuta la accion y envia la salida cifrada de vuelta.
-4) El modulo correspondiente procesa la respuesta y la consola la muestra.
-
-### MITM interactivo
-1) Se envia el comando mitm al cliente con un recurso objetivo.
-2) El cliente hace fetch con sus cookies y devuelve contenido al servidor.
-3) MITMServer expone el contenido via un endpoint proxy en 8001.
-
-## Estructura de directorios (resumen)
-- Socxss.py: punto de entrada del servidor WebSocket.
-- server/: servidor HTTP, payload y scripts auxiliares.
-- console/: UI web para la consola.
-- modules/: modulos y servidores auxiliares.
-- screenshots/: capturas recibidas.
+### Transferencia de Órdenes
+1) `ConsoleInWeb` envía mensajes en texto plano desde el _frontend_, que se codifican en tramas JSON (`type`, `msg`) cifradas usando AES con el IV de la sesión.
+2) El navegador víctima rompe el cifrado y usa el motor `eval` o módulos como `html2canvas` para extraer resultados.
+3) Empaqueta asíncronamente y los envía de retorno. `Socxss.py` descifra y el gestor de módulos los enruta a su clase respectiva (como almacenar imágenes o guardar logs).
 
 ## Diagrama (Mermaid)
 
 ```mermaid
-flowchart LR
-  operator[Operador] --> consoleUI[Consola Web]
-  consoleUI --> consoleSrv[ConsoleServer :8002]
-  consoleSrv --> wsServer[WebSocket Server :8765]
-  httpSrv[HTTP Server :8000] --> payload[Payload webSocket.js]
-  payload --> wsServer
-  wsServer --> modules[Modulos Python]
-  modules --> logger[Logger]
-  modules --> screenshot[Screenshot]
-  modules --> mitm[MITM]
-  mitm --> mitmProxy[MITM Proxy :8001]
-  wsServer --> consoleSrv
+flowchart TD
+    subgraph Config [config.py]
+        C[Settings]
+    end
+
+    subgraph Server [Backend C2]
+        WS[WebSocket Server / Socxss.py]
+        HTTP[Payload Server :8000]
+        CON[Console Server :8002]
+        MITM[MITM Proxy :8001]
+    end
+
+    subgraph Modulos Python
+        MOD_L[LoggerModule]
+        MOD_S[ScreenshotModule]
+        MOD_M[MITMModule]
+    end
+
+    subgraph Victims [Victimas]
+        V1[Victima A - SID 1]
+        V2[Victima B - SID 2]
+    end
+
+    C -.-> HTTP & WS & CON & MITM
+    
+    HTTP -->|webSocket.js + Keys/SID| V1
+    V1 <-->|AES Encrypted / ws://| WS
+    CON <-->|Recibe GUI y HTTP POST| WS
+    
+    WS --> MOD_L & MOD_S & MOD_M
+    MOD_M --> MITM
 ```
 
 ## Extensibilidad
-- Para agregar nuevas capacidades, crear un script en server/scripts/ que registre un nuevo comando en _webs_comands_ y un modulo en Python que procese la respuesta si corresponde.
-- Agregar el comando a la consola en modules/consoleComands/ y registrar en getComands.py si se requiere un comando del lado del operador.
+- Nuevas capacidades en cliente: añadir `scripts/*.js` y registrarlos en el frontend.
+- Nuevos roles de servidor: extender una clase en `modules/` e instanciar nuevos procesadores lógicos en `getModules.py`.
+- Nuevos comandos: extender en `modules/consoleComands/` (agregando herencia `AbstractComand`) y presentarlos en la vista general desde `getComands.py`.

@@ -13,6 +13,6 @@ var saveData = (function () {
     };
 }());
 
-_webs_comands_['downloadFile'] = function (mes) {
+_webs_Commands_['downloadFile'] = function (mes) {
     saveData(atob(mes.data), mes.fileName);
 }

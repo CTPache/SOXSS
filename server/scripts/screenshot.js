@@ -1,4 +1,4 @@
-_webs_comands_['screenshot'] = function (mes) {
+_webs_Commands_['screenshot'] = function (mes) {
     const screenshotTarget = document.body
     html2canvas(screenshotTarget).then((canvas) => {
         return canvas.toDataURL("image/png")

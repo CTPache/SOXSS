@@ -173,3 +173,5 @@ screenshots/
 
 # Ignore markdown files
 *.md
+console/logs/
+console/screenshots/

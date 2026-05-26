@@ -1,8 +1,11 @@
 hostScripts = "http://localhost:8000/"
-function loadDefaultScripts() {
-    sendConsole('load ' + hostScripts + 'scripts/screenshot.js'); sendConsole('load ' + hostScripts + 'scripts/html2canvas.min.js')
-    sendConsole('load ' + hostScripts + 'scripts/mitm.js')//.then(() => sendConsole('mitm'))
-    sendConsole('load ' + hostScripts + 'scripts/logger.js')
-    sendConsole('load ' + hostScripts + 'scripts/link2fetch.js')
-    sendConsole('load ' + hostScripts + 'scripts/downloadFile.js')
+async function loadDefaultScripts() {
+    await sendConsole('load ' + hostScripts + 'scripts/screenshot.js');
+    await sendConsole('load ' + hostScripts + 'scripts/html2canvas.min.js');
+    await sendConsole('load ' + hostScripts + 'scripts/mitm.js');
+    await sendConsole('load ' + hostScripts + 'scripts/logger.js');
+    await sendConsole('load ' + hostScripts + 'scripts/link2fetch.js');
+    await sendConsole('load ' + hostScripts + 'scripts/downloadFile.js');
+    await sendConsole('console.log("Loaded all scripts")');
+    console.log("Loaded all scripts");
 }

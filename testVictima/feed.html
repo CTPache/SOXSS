@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TestVictima | Feed</title>
+    <link rel="stylesheet" href="TestVictima.css">
+</head>
+<body>
+    <header class="topbar">
+        <div class="brand-block">
+            <div class="brand-mark">TV</div>
+            <div>
+                <p class="eyebrow">Mini social app</p>
+                <h1>Feed</h1>
+            </div>
+        </div>
+        <nav class="main-nav" aria-label="Navegacion principal">
+            <a id="homeNavLink" href="/">Inicio</a>
+            <a href="/profile">Mi perfil</a>
+            <button class="button button-ghost nav-logout hidden" id="headerLogoutButton" type="button">Cerrar sesion</button>
+        </nav>
+    </header>
+
+    <main class="shell">
+        <section class="card hero-simple">
+            <p class="eyebrow">Ultimos posts</p>
+            <h2>Feed global</h2>
+            <p>Visualiza los ultimos posts de todos los usuarios y recorre el historial con paginacion.</p>
+            <div class="session-strip">
+                <span class="chip" id="authStatus">Sin sesion</span>
+            </div>
+        </section>
+
+        <section class="card composer-card" id="composerCard">
+            <div class="section-head compact">
+                <div>
+                    <p class="eyebrow">Publicar</p>
+                    <h3>Crear nuevo post</h3>
+                </div>
+            </div>
+            <form id="postForm" class="composer-form">
+                <textarea id="postContentInput" rows="4" maxlength="280" placeholder="Comparte algo con el feed"></textarea>
+                <div class="composer-footer">
+                    <span class="helper" id="characterCount">0 / 280</span>
+                    <button class="button button-primary" type="submit">Publicar</button>
+                </div>
+            </form>
+            <p class="feedback" id="postFeedback" aria-live="polite"></p>
+        </section>
+
+        <section class="card dashboard-card">
+            <div class="section-head compact">
+                <div>
+                    <p class="eyebrow">Timeline</p>
+                    <h3>Posts mas recientes</h3>
+                </div>
+                <strong id="pageBadge">1 / 1</strong>
+            </div>
+            <div id="feedList" class="feed-list"></div>
+            <div class="pager">
+                <button class="button button-ghost" id="prevPageButton" type="button">Anterior</button>
+                <span class="pager-label" id="pagerLabel">Pagina 1 de 1</span>
+                <button class="button button-ghost" id="nextPageButton" type="button">Siguiente</button>
+            </div>
+        </section>
+    </main>
+
+    <template id="postTemplate">
+        <article class="post-card">
+            <div class="post-header">
+                <div class="post-author">
+                    <span class="avatar small-avatar"></span>
+                    <div>
+                        <a class="post-name post-author-link" href="/profile/"></a>
+                        <p class="post-handle"></p>
+                    </div>
+                </div>
+                <time class="post-time" datetime="2000-01-01T00:00:00Z">2000-01-01T00:00:00Z</time>
+            </div>
+            <p class="post-content"></p>
+            <div class="post-footer">
+                <span class="post-likes"></span>
+            </div>
+        </article>
+    </template>
+
+    <script src="feedPage.js"></script>
+</body>
+</html>

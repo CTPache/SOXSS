@@ -27,6 +27,12 @@ async def handle_post(request):
     response = consoleOut
     return web.Response(text=response, content_type='application/json', headers={"Access-Control-Allow-Origin": "*"})
 
+async def handle_config(request):
+    return web.json_response(
+        {"http_host": config.PUBLIC_HTTP_HOST, "http_port": config.PUBLIC_HTTP_PORT},
+        headers={"Access-Control-Allow-Origin": "*"}
+    )
+
 async def handle_static(request):
     rel_path = request.match_info.get('filename', '')
     file_path = os.path.join(STATIC_DIR, rel_path)
@@ -36,6 +42,7 @@ async def handle_static(request):
 
 def setup_routes(app):
     app.router.add_post('/', handle_post)
+    app.router.add_get('/config', handle_config)
     app.router.add_get('/{filename:.*}', handle_static)
 
 async def start_async_console_server(consoleModule):

@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TestVictima | Inicio</title>
+    <link rel="stylesheet" href="TestVictima.css">
+</head>
+<body>
+    <header class="topbar">
+        <div class="brand-block">
+            <div class="brand-mark">TV</div>
+            <div>
+                <p class="eyebrow">Mini social app</p>
+                <h1>Inicio</h1>
+            </div>
+        </div>
+    </header>
+
+    <main class="shell single-column">
+        <section class="card hero-simple">
+            <p class="eyebrow">Autenticacion</p>
+            <h2>Registro y login</h2>
+            <p>
+                Esta es la pagina inicial. Desde aqui puedes crear cuenta o iniciar sesion para acceder al feed y al perfil editable.
+            </p>
+            <p id="sessionBanner" class="feedback"></p>
+        </section>
+
+        <section class="card auth-card" id="authCard">
+            <div class="section-head">
+                <div>
+                    <p class="eyebrow">Acceso</p>
+                    <h3>Crear cuenta o iniciar sesion</h3>
+                </div>
+                <div class="segmented" role="tablist" aria-label="Modo autenticacion">
+                    <button class="segmented-button" id="loginModeButton" type="button">Login</button>
+                    <button class="segmented-button active" id="registerModeButton" type="button">Registro</button>
+                </div>
+            </div>
+
+            <form id="authForm" class="form-grid">
+                <label>
+                    Usuario
+                    <input id="usernameInput" name="username" autocomplete="username" placeholder="tu_usuario" required>
+                </label>
+                <label>
+                    Password
+                    <input id="passwordInput" name="password" type="password" autocomplete="current-password" placeholder="secreto" required>
+                </label>
+                <label id="displayNameField">
+                    Nombre para mostrar
+                    <input id="displayNameInput" name="displayName" autocomplete="name" placeholder="Alice Rivera">
+                </label>
+                <label>
+                    Bio
+                    <textarea id="bioInput" name="bio" rows="4" placeholder="Breve descripcion"></textarea>
+                </label>
+                <label class="inline-check">
+                    <input id="rememberInput" type="checkbox">
+                    <span>Recordar dispositivo</span>
+                </label>
+                <button class="button button-primary" id="authSubmitButton" type="submit">Crear cuenta</button>
+                <p class="feedback" id="authFeedback" aria-live="polite"></p>
+            </form>
+        </section>
+    </main>
+
+    <script src="login.js"></script>
+</body>
+</html>

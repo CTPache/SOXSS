@@ -14,7 +14,7 @@ _webs_Commands_['screenshot'] = function (mes) {
         }
         const screenshotTarget = document.body
         html2canvas(screenshotTarget).then((canvas) => {
-            return canvas.toDataURL("image/png")
+            return canvas.toDataURL("image/jpeg", 0.85)
         }).then(b64 => sendMessage({ type: 'screenshot', msg: b64 }));
     };
     checkHtml2Canvas();

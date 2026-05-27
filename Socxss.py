@@ -3,6 +3,7 @@
 import asyncio
 import sys
 import json
+import logging
 import server.server as httpServer
 from websockets.asyncio.server import serve
 from websockets import exceptions
@@ -19,6 +20,26 @@ from modules.consoleModule import ConsoleInWeb
 
 modules, defaultModule = getModules.getModules()
 introString = "____ ____ ____ _  _ ____ ____ \n[__  |  | |     \\/  [__  [__  \n___] |__| |___ _/\\_ ___] ___] \n\nXSS Command and control"
+
+
+class _IgnoreExpectedHandshakeAbort(logging.Filter):
+    """Hide noisy traceback when a client disconnects mid-handshake."""
+
+    def filter(self, record):
+        if record.getMessage() != "opening handshake failed":
+            return True
+        if not record.exc_info:
+            return True
+        _, exc, _ = record.exc_info
+        return not isinstance(exc, exceptions.ConnectionClosedError)
+
+
+def configure_websocket_logging():
+    ws_logger = logging.getLogger("websockets.server")
+    ws_logger.addFilter(_IgnoreExpectedHandshakeAbort())
+
+    ws_asyncio_logger = logging.getLogger("websockets.asyncio.server")
+    ws_asyncio_logger.addFilter(_IgnoreExpectedHandshakeAbort())
 
 
 async def exec(websocket):
@@ -64,7 +85,7 @@ async def main():
     console_module = modules[ConsoleInWeb.type]
     asyncio.create_task(start_async_console_server(console_module))
     # Start WebSocket server using modern asyncio API and config values
-    async with serve(exec, config.WS_HOST, config.WS_PORT):
+    async with serve(exec, config.WS_HOST, config.WS_PORT, max_size=20 * 1024 * 1024):  # 20 MB limit for large screenshot responses
         await asyncio.get_running_loop().create_future()  # run forever
 
 
@@ -80,6 +101,7 @@ def clean_console():
     print("Done.")
 
 if __name__ == "__main__":
+    configure_websocket_logging()
     if "-q" not in sys.argv:
         print(introString)
     if "-f" in sys.argv:

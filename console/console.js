@@ -3,6 +3,13 @@ var commandHistory = [];
 var historyIndex = 0;
 var draftCommand = "";
 
+function clearConsoleLog() {
+    const log = document.getElementById('log');
+    if (log) {
+        log.innerHTML = '';
+    }
+}
+
 // Envía el mensaje al server por POST
 async function sendConsole(Command = "") {
     return fetch(host, { method: 'POST', body: Command })
@@ -14,6 +21,13 @@ function handleConsoleSubmit() {
     const input = document.getElementById('inputText');
     const val = input.value.trim();
     if (!val) return;
+
+    const lowerVal = val.toLowerCase();
+    if (lowerVal === 'clear' || lowerVal === 'cls') {
+        clearConsoleLog();
+        input.value = '';
+        return;
+    }
 
     commandHistory.push(val);
     historyIndex = commandHistory.length;
@@ -63,7 +77,15 @@ function handleHistoryNavigation(event) {
 document.addEventListener('DOMContentLoaded', function () {
     const input = document.getElementById('inputText');
     if (!input) return;
+
     input.addEventListener('keydown', handleHistoryNavigation);
+    document.addEventListener('keydown', function (event) {
+        if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'l') {
+            event.preventDefault();
+            clearConsoleLog();
+            input.focus();
+        }
+    });
 });
 
 function appendLog(data) {

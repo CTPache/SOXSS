@@ -175,5 +175,5 @@ screenshots/
 *.md
 console/logs/
 console/screenshots/
-testVictima/*.json
 memoria/
+testVictima/registry/

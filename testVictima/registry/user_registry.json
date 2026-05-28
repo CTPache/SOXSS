@@ -1,13 +1,5 @@
 [
   {
-    "username": "ñacañaca",
-    "password": "olaola",
-    "displayName": "rosa",
-    "bio": "hola guapo ;)",
-    "avatarColor": "#1f7aec",
-    "joinedAt": "2026-05-27T12:06:09"
-  },
-  {
     "username": "test",
     "password": "test",
     "displayName": "Test",

@@ -1,4 +1,4 @@
-# Network Configuration
+﻿# Network Configuration
 
 # HTTP Server (Serves the initial payload/scripts)
 HTTP_HOST = "0.0.0.0"
@@ -15,7 +15,48 @@ WS_HOST = "0.0.0.0"
 WS_PORT = 8765
 
 # Public hostnames and ports for external access (if needed)
-PUBLIC_HTTP_HOST = "192.168.1.10"
-PUBLIC_WS_HOST = "192.168.1.10"
-PUBLIC_HTTP_PORT = 8000
-PUBLIC_WS_PORT = 8765
+PUBLIC_HTTP_HOST = "author-collins-responded-freedom.trycloudflare.com"
+PUBLIC_WS_HOST = "cabinet-mode-roughly-contracting.trycloudflare.com"
+
+# Public schemes for remote exposure. Use https/wss for devtunnels or ngrok.
+PUBLIC_HTTP_SCHEME = "https"
+PUBLIC_WS_SCHEME = "wss"
+
+# Use None when your tunnel endpoint already implies the external port.
+PUBLIC_HTTP_PORT = None
+PUBLIC_WS_PORT = None
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -236,7 +236,12 @@ class TestSocxssRuntime(SocksUtilStateMixin, CryptoUtilStateMixin, SocxssImportM
             with self.assertRaisesRegex(RuntimeError, "stop main"):
                 await socxss.main()
 
-        serve_mock.assert_called_once_with(socxss.exec, socxss.config.WS_HOST, socxss.config.WS_PORT)
+        serve_mock.assert_called_once_with(
+            socxss.exec,
+            socxss.config.WS_HOST,
+            socxss.config.WS_PORT,
+            max_size=20 * 1024 * 1024,
+        )
         self.assertEqual(len(fake_tasks), 2)
         for task in fake_tasks:
             await task

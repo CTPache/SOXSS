@@ -75,11 +75,17 @@ body::before {
 }
 
 .topbar {
+    position: sticky;
+    top: 0;
     display: flex;
     justify-content: space-between;
     align-items: center;
     gap: 20px;
     padding: 24px clamp(18px, 3vw, 36px) 12px;
+    background: rgba(244, 247, 251, 0.82);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--line);
+    z-index: 20;
 }
 
 .brand-block {
@@ -135,14 +141,6 @@ p {
     font-weight: 700;
     color: var(--muted);
     margin-bottom: 8px;
-}
-
-.session-strip {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    flex-wrap: wrap;
-    justify-content: flex-end;
 }
 
 .chip {
@@ -225,6 +223,18 @@ p {
     cursor: pointer;
     font-size: inherit;
     font-family: inherit;
+}
+
+.user-chip {
+    display: inline-flex;
+    align-items: center;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 9px 12px;
+    background: rgba(255, 255, 255, 0.8);
+    color: var(--muted);
+    font-weight: 700;
+    font-size: 0.92rem;
 }
 
 .shell {
@@ -568,9 +578,6 @@ textarea {
         align-items: flex-start;
     }
 
-    .session-strip {
-        justify-content: flex-start;
-    }
 }
 
 @media (max-width: 640px) {

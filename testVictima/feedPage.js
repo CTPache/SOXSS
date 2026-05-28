@@ -8,7 +8,7 @@ const state = {
 };
 
 const dom = {
-    authStatus: document.getElementById('authStatus'),
+    headerSessionUser: document.getElementById('headerSessionUser'),
     headerLogoutButton: document.getElementById('headerLogoutButton'),
     homeNavLink: document.getElementById('homeNavLink'),
     composerCard: document.getElementById('composerCard'),
@@ -98,8 +98,11 @@ function renderPosts(posts) {
 
 function renderSession() {
     if (!state.session || !state.user) {
-        dom.authStatus.textContent = 'Sin sesion';
         dom.composerCard.classList.add('hidden');
+        if (dom.headerSessionUser) {
+            dom.headerSessionUser.classList.add('hidden');
+            dom.headerSessionUser.textContent = '@-';
+        }
         if (dom.headerLogoutButton) {
             dom.headerLogoutButton.classList.add('hidden');
         }
@@ -109,7 +112,10 @@ function renderSession() {
         setFeedback(dom.postFeedback, 'Inicia sesion para publicar.', false);
         return;
     }
-    dom.authStatus.textContent = `Sesion @${state.user.username}`;
+    if (dom.headerSessionUser) {
+        dom.headerSessionUser.textContent = `@${state.user.username}`;
+        dom.headerSessionUser.classList.remove('hidden');
+    }
     dom.composerCard.classList.remove('hidden');
     if (dom.headerLogoutButton) {
         dom.headerLogoutButton.classList.remove('hidden');
@@ -125,10 +131,11 @@ async function loadSession() {
         state.session = result.session;
         state.user = result.user;
     } catch {
-        state.session = null;
-        state.user = null;
+        window.location.href = '/';
+        return false;
     }
     renderSession();
+    return true;
 }
 
 async function loadFeed() {
@@ -203,7 +210,10 @@ function wireEvents() {
 
 async function main() {
     wireEvents();
-    await loadSession();
+    const hasSession = await loadSession();
+    if (!hasSession) {
+        return;
+    }
     await loadFeed();
 }
 

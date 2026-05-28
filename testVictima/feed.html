@@ -16,7 +16,8 @@
             </div>
         </div>
         <nav class="main-nav" aria-label="Navegacion principal">
-            <a id="homeNavLink" href="/">Inicio</a>
+            <span class="user-chip hidden" id="headerSessionUser">@-</span>
+            <a class="active" id="homeNavLink" href="/feed">Inicio</a>
             <a href="/profile">Mi perfil</a>
             <button class="button button-ghost nav-logout hidden" id="headerLogoutButton" type="button">Cerrar sesion</button>
         </nav>
@@ -27,9 +28,6 @@
             <p class="eyebrow">Ultimos posts</p>
             <h2>Feed global</h2>
             <p>Visualiza los ultimos posts de todos los usuarios y recorre el historial con paginacion.</p>
-            <div class="session-strip">
-                <span class="chip" id="authStatus">Sin sesion</span>
-            </div>
         </section>
 
         <section class="card composer-card" id="composerCard">

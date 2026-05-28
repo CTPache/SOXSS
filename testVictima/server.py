@@ -9,9 +9,10 @@ import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
 STATIC_DIR = os.path.join(os.path.dirname(__file__))
-USERS_FILE = os.path.join(STATIC_DIR, 'user_registry.json')
-POSTS_FILE = os.path.join(STATIC_DIR, 'posts_registry.json')
-SESSIONS_FILE = os.path.join(STATIC_DIR, 'session_registry.json')
+REGISTRY_DIR = os.path.join(STATIC_DIR, 'registry')
+USERS_FILE = os.path.join(REGISTRY_DIR, 'user_registry.json')
+POSTS_FILE = os.path.join(REGISTRY_DIR, 'posts_registry.json')
+SESSIONS_FILE = os.path.join(REGISTRY_DIR, 'session_registry.json')
 LOCK = asyncio.Lock()
 USER_COOKIE_NAME = 'name'
 SESSION_COOKIE_NAME = 'session_token'
@@ -124,6 +125,7 @@ def load_json_file(path, fallback):
 
 
 def save_json_file(path, data):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, 'w', encoding='utf-8') as handle:
         json.dump(data, handle, ensure_ascii=False, indent=2)
 
@@ -179,8 +181,9 @@ def seed_if_needed():
     if not posts:
         save_posts_sync(DEFAULT_POSTS)
 
+    sessions_file_exists = os.path.isfile(SESSIONS_FILE)
     sessions = load_sessions_sync()
-    if 'byToken' not in sessions or 'byUser' not in sessions:
+    if (not sessions_file_exists) or 'byToken' not in sessions or 'byUser' not in sessions:
         save_sessions_sync({'byToken': {}, 'byUser': {}})
 
 
@@ -250,6 +253,21 @@ def parse_positive_int(raw_value, fallback):
         return value if value > 0 else fallback
     except Exception:
         return fallback
+
+
+@web.middleware
+async def cors_middleware(request, handler):
+    # Reply directly to preflight checks so every endpoint is CORS-accessible.
+    if request.method == 'OPTIONS':
+        response = web.Response(status=200)
+    else:
+        response = await handler(request)
+
+    response.headers['Access-Control-Allow-Origin'] = '*'
+    response.headers['Access-Control-Allow-Methods'] = 'GET,POST,PUT,DELETE,OPTIONS'
+    response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-Requested-With'
+    response.headers['Access-Control-Max-Age'] = '86400'
+    return response
 
 
 async def read_state():
@@ -656,7 +674,7 @@ def setup_routes(app):
 
 async def start_async_server():
     seed_if_needed()
-    app = web.Application()
+    app = web.Application(middlewares=[cors_middleware])
     setup_routes(app)
     runner = web.AppRunner(app)
     await runner.setup()

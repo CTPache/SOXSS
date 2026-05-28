@@ -97,7 +97,9 @@ class TestConsoleServer(SocksUtilStateMixin, unittest.IsolatedAsyncioTestCase):
         console_server.setup_routes(app)
 
         app.router.add_post.assert_called_once_with('/', console_server.handle_post)
-        app.router.add_get.assert_called_once_with('/{filename:.*}', console_server.handle_static)
+        self.assertEqual(app.router.add_get.call_count, 2)
+        app.router.add_get.assert_any_call('/config', console_server.handle_config)
+        app.router.add_get.assert_any_call('/{filename:.*}', console_server.handle_static)
 
     async def test_start_async_console_server_bootstraps_site(self):
         fake_runner = MagicMock()
@@ -150,7 +152,7 @@ class TestPayloadServer(unittest.IsolatedAsyncioTestCase):
     async def test_handle_static_injects_runtime_values_into_websocket_payload(self):
         with TemporaryDirectory() as tmpdir:
             file_path = Path(tmpdir) / "webSocket.js"
-            file_path.write_text("$key|$IV|$sid|$hhost|$whost|$wport|$hport", encoding="utf-8")
+            file_path.write_text("$key|$IV|$sid|$hbase|$wsbase|$hhost|$whost|$wport|$hport", encoding="utf-8")
             request = SimpleNamespace(match_info={"filename": "webSocket.js"})
 
             with patch.object(payload_server, "STATIC_DIR", tmpdir), patch(
@@ -167,6 +169,8 @@ class TestPayloadServer(unittest.IsolatedAsyncioTestCase):
         self.assertIn("sid-123", response.text)
         self.assertIn(payload_server.config.PUBLIC_HTTP_HOST, response.text)
         self.assertIn(payload_server.config.PUBLIC_WS_HOST, response.text)
+        self.assertIn(payload_server.config.PUBLIC_HTTP_SCHEME, response.text)
+        self.assertIn(payload_server.config.PUBLIC_WS_SCHEME, response.text)
         self.assertIn(str(payload_server.config.PUBLIC_HTTP_PORT), response.text)
         self.assertIn(str(payload_server.config.PUBLIC_WS_PORT), response.text)
         set_key_iv.assert_called_once_with("sid-123", "secret-key", "deadbeef")
@@ -195,7 +199,8 @@ class TestPayloadServer(unittest.IsolatedAsyncioTestCase):
             with self.assertRaisesRegex(RuntimeError, "stop"):
                 await payload_server.start_async_server()
 
-        app_ctor.assert_called_once_with()
+        app_ctor.assert_called_once()
+        self.assertIn("middlewares", app_ctor.call_args.kwargs)
         setup_routes.assert_called_once_with("app")
         runner_ctor.assert_called_once_with("app")
         site_ctor.assert_called_once_with(fake_runner, payload_server.config.HTTP_HOST, payload_server.config.HTTP_PORT)

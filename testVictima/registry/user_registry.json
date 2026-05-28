@@ -1,0 +1,42 @@
+[
+  {
+    "username": "ñacañaca",
+    "password": "olaola",
+    "displayName": "rosa",
+    "bio": "hola guapo ;)",
+    "avatarColor": "#1f7aec",
+    "joinedAt": "2026-05-27T12:06:09"
+  },
+  {
+    "username": "test",
+    "password": "test",
+    "displayName": "Test",
+    "bio": "Test",
+    "avatarColor": "#1f7aec",
+    "joinedAt": "2026-05-27T10:28:49"
+  },
+  {
+    "username": "alice",
+    "password": "alice123",
+    "displayName": "Alice Rivera",
+    "bio": "Frontend engineer who posts about product launches and UI details.",
+    "avatarColor": "#1f7aec",
+    "joinedAt": "2026-01-12T10:00:00"
+  },
+  {
+    "username": "bob",
+    "password": "bob123",
+    "displayName": "Bob Chen",
+    "bio": "Backend developer building APIs, queues, and observability dashboards.",
+    "avatarColor": "#137333",
+    "joinedAt": "2026-02-03T09:15:00"
+  },
+  {
+    "username": "carol",
+    "password": "carol123",
+    "displayName": "Carol Vega",
+    "bio": "Security analyst sharing notes about testing, hardening, and sessions.",
+    "avatarColor": "#b54708",
+    "joinedAt": "2026-03-22T16:20:00"
+  }
+]

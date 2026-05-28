@@ -5,7 +5,13 @@ async function getHostScripts() {
     try {
         const res = await fetch(host + '/config');
         const cfg = await res.json();
-        hostScripts = `http://${cfg.http_host}:${cfg.http_port}/`;
+        if (cfg.http_base) {
+            hostScripts = cfg.http_base;
+        } else {
+            const scheme = cfg.http_scheme || 'http';
+            const port = (cfg.http_port === null || cfg.http_port === undefined || cfg.http_port === '') ? '' : `:${cfg.http_port}`;
+            hostScripts = `${scheme}://${cfg.http_host}${port}/`;
+        }
     } catch (e) {
         hostScripts = 'http://localhost:8000/';
     }

@@ -7,6 +7,7 @@ const state = {
 };
 
 const dom = {
+    headerSessionUser: document.getElementById('headerSessionUser'),
     profileTitle: document.getElementById('profileTitle'),
     profileAvatar: document.getElementById('profileAvatar'),
     profileName: document.getElementById('profileName'),
@@ -115,14 +116,17 @@ async function loadSession() {
         const sessionState = await apiFetch('/api/session');
         state.session = sessionState.session;
         state.currentUser = sessionState.user;
+        if (dom.headerSessionUser) {
+            dom.headerSessionUser.textContent = `@${state.currentUser.username}`;
+            dom.headerSessionUser.classList.remove('hidden');
+        }
         dom.headerLogoutButton.classList.remove('hidden');
         dom.homeNavLink.href = '/feed';
     } catch {
-        state.session = null;
-        state.currentUser = null;
-        dom.headerLogoutButton.classList.add('hidden');
-        dom.homeNavLink.href = '/';
+        window.location.href = '/';
+        return false;
     }
+    return true;
 }
 
 async function handleLogout() {
@@ -215,7 +219,10 @@ function wireEvents() {
 
 async function main() {
     wireEvents();
-    await loadSession();
+    const hasSession = await loadSession();
+    if (!hasSession) {
+        return;
+    }
     await loadProfile();
 }
 

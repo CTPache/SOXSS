@@ -179,7 +179,10 @@ console/logs/
 console/screenshots/
 
 # Ignore the registry and data files of the test victim
-testVictima/registry/
+testVictima/registry/posts_registry.json
+testVictima/registry/session_registry.json
+testVictima/registry/user_registry.json
+
 
 # Ignore the memoria directory
 memoria/

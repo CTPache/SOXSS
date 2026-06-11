@@ -225,6 +225,12 @@ if (-not (Test-Path -Path $pythonExe)) {
 }
 
 $soxssArgs = @("Socxss.py")
+$soxssArgs += @("--PUBLIC_HTTP_HOST", $httpParsed.Host)
+$soxssArgs += @("--PUBLIC_WS_HOST", $wsParsed.Host)
+$soxssArgs += @("--PUBLIC_HTTP_SCHEME", "https")
+$soxssArgs += @("--PUBLIC_WS_SCHEME", "wss")
+$soxssArgs += @("--PUBLIC_HTTP_PORT", "None")
+$soxssArgs += @("--PUBLIC_WS_PORT", "None")
 if ($FreshStart) { $soxssArgs += "-f" }
 if ($Quiet) { $soxssArgs += "-q" }
 

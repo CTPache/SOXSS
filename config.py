@@ -15,8 +15,8 @@ WS_HOST = "0.0.0.0"
 WS_PORT = 8765
 
 # Public hostnames and ports for external access (if needed)
-PUBLIC_HTTP_HOST = "author-collins-responded-freedom.trycloudflare.com"
-PUBLIC_WS_HOST = "cabinet-mode-roughly-contracting.trycloudflare.com"
+PUBLIC_HTTP_HOST = "example.com"
+PUBLIC_WS_HOST = "example.com"
 
 # Public schemes for remote exposure. Use https/wss for devtunnels or ngrok.
 PUBLIC_HTTP_SCHEME = "https"
@@ -25,38 +25,3 @@ PUBLIC_WS_SCHEME = "wss"
 # Use None when your tunnel endpoint already implies the external port.
 PUBLIC_HTTP_PORT = None
 PUBLIC_WS_PORT = None
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

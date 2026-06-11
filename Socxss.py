@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import asyncio
+import argparse
 import sys
 import json
 import logging
@@ -40,6 +41,73 @@ def configure_websocket_logging():
 
     ws_asyncio_logger = logging.getLogger("websockets.asyncio.server")
     ws_asyncio_logger.addFilter(_IgnoreExpectedHandshakeAbort())
+
+
+def _iter_config_keys():
+    for key in sorted(vars(config)):
+        if key.isupper() and not key.startswith("_"):
+            yield key
+
+
+def _normalize_cli_tokens(argv):
+    normalized = []
+    for token in argv:
+        if token.startswith("--") and token.endswith(":"):
+            normalized.append(token[:-1])
+            continue
+        if token.startswith("--") and ":" in token and "=" not in token:
+            opt, value = token.split(":", 1)
+            if opt:
+                normalized.extend([opt, value])
+                continue
+        normalized.append(token)
+    return normalized
+
+
+def _coerce_override_value(raw_value, current_value):
+    value = raw_value.strip()
+    if isinstance(current_value, bool):
+        lowered = value.lower()
+        if lowered in {"1", "true", "yes", "on"}:
+            return True
+        if lowered in {"0", "false", "no", "off"}:
+            return False
+        raise ValueError(f"Invalid boolean value: {raw_value}")
+    if isinstance(current_value, int):
+        return int(value)
+    if current_value is None:
+        lowered = value.lower()
+        if lowered in {"none", "null", ""}:
+            return None
+        try:
+            return int(value)
+        except ValueError:
+            return value
+    return value
+
+
+def parse_cli_args(argv):
+    parser = argparse.ArgumentParser(allow_abbrev=False)
+    parser.add_argument("-q", "--quiet", action="store_true", help="Suppress banner output")
+    parser.add_argument("-f", "--fresh-start", action="store_true", help="Clean console logs/screenshots before start")
+
+    for key in _iter_config_keys():
+        parser.add_argument(f"--{key}", dest=key, type=str, help=f"Override config.{key}")
+
+    return parser.parse_args(_normalize_cli_tokens(argv))
+
+
+def apply_config_overrides(parsed_args):
+    for key in _iter_config_keys():
+        raw_value = getattr(parsed_args, key)
+        if raw_value is None:
+            continue
+        current_value = getattr(config, key)
+        try:
+            coerced_value = _coerce_override_value(raw_value, current_value)
+        except ValueError as exc:
+            raise ValueError(f"Invalid value for --{key}: {raw_value}") from exc
+        setattr(config, key, coerced_value)
 
 
 async def exec(websocket):
@@ -101,10 +169,12 @@ def clean_console():
     print("Done.")
 
 if __name__ == "__main__":
+    args = parse_cli_args(sys.argv[1:])
+    apply_config_overrides(args)
     configure_websocket_logging()
-    if "-q" not in sys.argv:
+    if not args.quiet:
         print(introString)
-    if "-f" in sys.argv:
+    if args.fresh_start:
         clean_console()
     try:
         asyncio.run(main())

@@ -321,3 +321,44 @@ class TestSocxssMainGuard(unittest.TestCase):
         self.assertIn("Cleaning console screenshots and logs...", printed)
         self.assertIn("Done.", printed)
         self.assertFalse(any("XSS Command and control" in str(msg) for msg in printed))
+
+
+class TestSocxssCliConfigOverrides(SocxssImportMixin, unittest.TestCase):
+    def test_parse_cli_args_accepts_colon_syntax(self):
+        socxss = self.load_socxss_module()
+
+        args = socxss.parse_cli_args(["--HTTP_HOST:", "192.168.12.12", "--HTTP_PORT:9000"])
+
+        self.assertEqual(args.HTTP_HOST, "192.168.12.12")
+        self.assertEqual(args.HTTP_PORT, "9000")
+
+    def test_apply_config_overrides_updates_all_value_types(self):
+        socxss = self.load_socxss_module()
+        tracked_keys = ["HTTP_HOST", "HTTP_PORT", "PUBLIC_HTTP_PORT", "PUBLIC_WS_PORT", "PUBLIC_HTTP_SCHEME"]
+        original_values = {key: getattr(socxss.config, key) for key in tracked_keys}
+
+        try:
+            args = socxss.parse_cli_args(
+                [
+                    "--HTTP_HOST",
+                    "192.168.12.12",
+                    "--HTTP_PORT",
+                    "9000",
+                    "--PUBLIC_HTTP_PORT",
+                    "8080",
+                    "--PUBLIC_WS_PORT",
+                    "None",
+                    "--PUBLIC_HTTP_SCHEME",
+                    "http",
+                ]
+            )
+            socxss.apply_config_overrides(args)
+
+            self.assertEqual(socxss.config.HTTP_HOST, "192.168.12.12")
+            self.assertEqual(socxss.config.HTTP_PORT, 9000)
+            self.assertEqual(socxss.config.PUBLIC_HTTP_PORT, 8080)
+            self.assertIsNone(socxss.config.PUBLIC_WS_PORT)
+            self.assertEqual(socxss.config.PUBLIC_HTTP_SCHEME, "http")
+        finally:
+            for key, value in original_values.items():
+                setattr(socxss.config, key, value)

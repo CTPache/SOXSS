@@ -3,7 +3,7 @@ param(
     [string]$RepoRoot = "",
     [switch]$FreshStart,
     [switch]$Quiet,
-    [switch]$NoTestVictimTunnel
+    [switch]$NoTwisterTunnel
 )
 
 Set-StrictMode -Version Latest
@@ -26,7 +26,7 @@ function Write-Step([string]$Message) {
     Write-Host "[start-all] $Message"
 }
 
-function Test-TestVictimHealth {
+function Test-TwisterHealth {
     try {
         $null = Invoke-RestMethod -Uri "http://127.0.0.1:7070/api/users" -Method Get -TimeoutSec 3 -ErrorAction Stop
         return $true
@@ -41,9 +41,9 @@ if (-not (Test-Path -Path $pythonExe)) {
     throw "Python virtual environment not found at: $pythonExe"
 }
 
-$testVictimScript = Join-Path $RepoRoot "testVictima\server.py"
-if (-not (Test-Path -Path $testVictimScript)) {
-    throw "Test victim server script not found at: $testVictimScript"
+$twisterScript = Join-Path $RepoRoot "twister\server.py"
+if (-not (Test-Path -Path $twisterScript)) {
+    throw "Twister server script not found at: $twisterScript"
 }
 
 $deployScript = Join-Path $RepoRoot "scripts\deploy_cloudflare.ps1"
@@ -51,41 +51,41 @@ if (-not (Test-Path -Path $deployScript)) {
     throw "Cloudflare deploy script not found at: $deployScript"
 }
 
-$testVictimLogOut = Join-Path $env:TEMP "soxss-testVictim.out.log"
-$testVictimLogErr = Join-Path $env:TEMP "soxss-testVictim.err.log"
-if (Test-Path -Path $testVictimLogOut) {
-    Remove-Item -Path $testVictimLogOut -Force -ErrorAction SilentlyContinue
+$twisterLogOut = Join-Path $env:TEMP "soxss-twister.out.log"
+$twisterLogErr = Join-Path $env:TEMP "soxss-twister.err.log"
+if (Test-Path -Path $twisterLogOut) {
+    Remove-Item -Path $twisterLogOut -Force -ErrorAction SilentlyContinue
 }
-if (Test-Path -Path $testVictimLogErr) {
-    Remove-Item -Path $testVictimLogErr -Force -ErrorAction SilentlyContinue
+if (Test-Path -Path $twisterLogErr) {
+    Remove-Item -Path $twisterLogErr -Force -ErrorAction SilentlyContinue
 }
 
-if (Test-TestVictimHealth) {
-    Write-Step "testVictima server already running on port 7070, reusing it"
+if (Test-TwisterHealth) {
+    Write-Step "twister server already running on port 7070, reusing it"
 }
 else {
-    Write-Step "Starting testVictima server (port 7070)"
-    $testVictimProc = Start-Process -FilePath $pythonExe -ArgumentList @($testVictimScript) -WorkingDirectory $RepoRoot -WindowStyle Hidden -PassThru -RedirectStandardOutput $testVictimLogOut -RedirectStandardError $testVictimLogErr
+    Write-Step "Starting twister server (port 7070)"
+    $twisterProc = Start-Process -FilePath $pythonExe -ArgumentList @($twisterScript) -WorkingDirectory $RepoRoot -WindowStyle Hidden -PassThru -RedirectStandardOutput $twisterLogOut -RedirectStandardError $twisterLogErr
 
     Start-Sleep -Milliseconds 1200
-    if ($testVictimProc.HasExited) {
-        $outTail = if (Test-Path -Path $testVictimLogOut) { Get-Content -Path $testVictimLogOut -Tail 80 -ErrorAction SilentlyContinue | Out-String } else { "(stdout unavailable)" }
-        $errTail = if (Test-Path -Path $testVictimLogErr) { Get-Content -Path $testVictimLogErr -Tail 80 -ErrorAction SilentlyContinue | Out-String } else { "(stderr unavailable)" }
+    if ($twisterProc.HasExited) {
+        $outTail = if (Test-Path -Path $twisterLogOut) { Get-Content -Path $twisterLogOut -Tail 80 -ErrorAction SilentlyContinue | Out-String } else { "(stdout unavailable)" }
+        $errTail = if (Test-Path -Path $twisterLogErr) { Get-Content -Path $twisterLogErr -Tail 80 -ErrorAction SilentlyContinue | Out-String } else { "(stderr unavailable)" }
 
-        if ($errTail -match '10048' -and (Test-TestVictimHealth)) {
-            Write-Step "Port 7070 was busy but testVictima is already up, continuing"
+        if ($errTail -match '10048' -and (Test-TwisterHealth)) {
+            Write-Step "Port 7070 was busy but twister is already up, continuing"
         }
         else {
-            throw "testVictima server exited early with code $($testVictimProc.ExitCode). Logs:`nSTDOUT:`n$outTail`nSTDERR:`n$errTail"
+            throw "twister server exited early with code $($twisterProc.ExitCode). Logs:`nSTDOUT:`n$outTail`nSTDERR:`n$errTail"
         }
     }
 }
 
-if (Test-TestVictimHealth) {
-    Write-Step "testVictima server is up"
+if (Test-TwisterHealth) {
+    Write-Step "twister server is up"
 }
 else {
-    Write-Host "[start-all] Warning: testVictima health check failed, continuing anyway."
+    Write-Host "[start-all] Warning: twister health check failed, continuing anyway."
 }
 
 $deployArgs = @{
@@ -93,7 +93,7 @@ $deployArgs = @{
 }
 if ($FreshStart) { $deployArgs.FreshStart = $true }
 if ($Quiet) { $deployArgs.Quiet = $true }
-if ($NoTestVictimTunnel) { $deployArgs.NoTestVictimTunnel = $true }
+if ($NoTwisterTunnel) { $deployArgs.NoTwisterTunnel = $true }
 
 Write-Step "Starting Cloudflare tunnels and SOXSS"
 & $deployScript @deployArgs

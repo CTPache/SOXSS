@@ -53,7 +53,7 @@ function setMode(mode) {
     dom.displayNameField.classList.toggle('hidden', !isRegister);
     dom.bioInput.parentElement.classList.toggle('hidden', !isRegister);
     dom.authSubmitButton.textContent = isRegister ? 'Crear cuenta' : 'Entrar';
-    setFeedback(dom.authFeedback, isRegister ? 'Crea un usuario para empezar.' : 'Inicia sesion con tu cuenta.', false);
+    setFeedback(dom.authFeedback, isRegister ? 'Crea un usuario para empezar.' : 'Inicia sesión con tu cuenta.', false);
 }
 
 async function handleAuthSubmit(event) {
@@ -81,7 +81,7 @@ async function handleAuthSubmit(event) {
         dom.authForm.reset();
         dom.rememberInput.checked = true;
         setMode('login');
-        setFeedback(dom.authFeedback, `Sesion iniciada como @${username}. Redirigiendo al feed...`, false);
+        setFeedback(dom.authFeedback, `Sesión iniciada como @${username}. Redirigiendo al feed...`, false);
         setTimeout(() => {
             window.location.href = '/feed';
         }, 500);
@@ -104,7 +104,7 @@ async function main() {
 
 main().catch((error) => {
     console.error(error);
-    setFeedback(dom.authFeedback, 'No se pudo iniciar la pagina.', true);
+    setFeedback(dom.authFeedback, 'No se pudo iniciar la página.', true);
 });
 
 })();

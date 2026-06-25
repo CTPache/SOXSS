@@ -5,7 +5,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[2]
-SERVER_PATH = ROOT / "testVictima" / "server.py"
+SERVER_PATH = ROOT / "twister" / "server.py"
 
 
 def load_victim_server(unique_name="victim_server_runner"):

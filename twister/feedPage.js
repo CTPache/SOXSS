@@ -109,7 +109,7 @@ function renderSession() {
         if (dom.homeNavLink) {
             dom.homeNavLink.href = '/';
         }
-        setFeedback(dom.postFeedback, 'Inicia sesion para publicar.', false);
+        setFeedback(dom.postFeedback, 'Inicia sesión para publicar.', false);
         return;
     }
     if (dom.headerSessionUser) {
@@ -142,7 +142,7 @@ async function loadFeed() {
     const feed = await apiFetch(`/api/feed?page=${state.page}&pageSize=${state.pageSize}`);
     state.totalPages = feed.totalPages || 1;
     dom.pageBadge.textContent = `${feed.page} / ${state.totalPages}`;
-    dom.pagerLabel.textContent = `Pagina ${feed.page} de ${state.totalPages}`;
+    dom.pagerLabel.textContent = `Página ${feed.page} de ${state.totalPages}`;
     dom.prevPageButton.disabled = !feed.hasPrev;
     dom.nextPageButton.disabled = !feed.hasNext;
     renderPosts(feed.items || []);
@@ -151,7 +151,7 @@ async function loadFeed() {
 async function handlePostSubmit(event) {
     event.preventDefault();
     if (!state.user) {
-        setFeedback(dom.postFeedback, 'Debes iniciar sesion.', true);
+        setFeedback(dom.postFeedback, 'Debes iniciar sesión.', true);
         return;
     }
     const content = dom.postContentInput.value.trim();

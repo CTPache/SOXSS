@@ -1,5 +1,6 @@
 import asyncio
 import importlib
+import logging
 import os
 import runpy
 import sys
@@ -362,3 +363,48 @@ class TestSocxssCliConfigOverrides(SocxssImportMixin, unittest.TestCase):
         finally:
             for key, value in original_values.items():
                 setattr(socxss.config, key, value)
+
+    def test_coerce_override_value_handles_bool_and_freeform(self):
+        socxss = self.load_socxss_module()
+
+        self.assertIs(socxss._coerce_override_value("true", False), True)
+        self.assertIs(socxss._coerce_override_value("off", True), False)
+        with self.assertRaises(ValueError):
+            socxss._coerce_override_value("maybe", True)
+        # current value None with a non-integer string falls back to the raw string
+        self.assertEqual(socxss._coerce_override_value("example.com", None), "example.com")
+
+    def test_apply_config_overrides_wraps_invalid_value_error(self):
+        socxss = self.load_socxss_module()
+        original = socxss.config.HTTP_PORT
+        try:
+            args = socxss.parse_cli_args(["--HTTP_PORT", "not-a-number"])
+            with self.assertRaisesRegex(ValueError, r"Invalid value for --HTTP_PORT"):
+                socxss.apply_config_overrides(args)
+        finally:
+            socxss.config.HTTP_PORT = original
+
+
+class TestSocxssHandshakeLogFilter(SocxssImportMixin, unittest.TestCase):
+    def test_filter_hides_only_expected_handshake_connection_close(self):
+        socxss = self.load_socxss_module()
+        log_filter = socxss._IgnoreExpectedHandshakeAbort()
+
+        unrelated = logging.makeLogRecord({"msg": "some other websocket error"})
+        self.assertTrue(log_filter.filter(unrelated))
+
+        without_exc = logging.makeLogRecord({"msg": "opening handshake failed"})
+        without_exc.exc_info = None
+        self.assertTrue(log_filter.filter(without_exc))
+
+        class FakeConnectionClosedError(Exception):
+            pass
+
+        with patch.object(socxss.exceptions, "ConnectionClosedError", FakeConnectionClosedError):
+            expected = logging.makeLogRecord({"msg": "opening handshake failed"})
+            expected.exc_info = (FakeConnectionClosedError, FakeConnectionClosedError("closed"), None)
+            self.assertFalse(log_filter.filter(expected))
+
+            unexpected = logging.makeLogRecord({"msg": "opening handshake failed"})
+            unexpected.exc_info = (ValueError, ValueError("boom"), None)
+            self.assertTrue(log_filter.filter(unexpected))

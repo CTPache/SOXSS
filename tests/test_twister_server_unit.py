@@ -6,15 +6,17 @@ import unittest
 from pathlib import Path
 from types import SimpleNamespace
 
+from unittest.mock import AsyncMock, MagicMock, patch
+
 from aiohttp import ClientSession, CookieJar, web
 from yarl import URL
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SERVER_PATH = ROOT / "testVictima" / "server.py"
+SERVER_PATH = ROOT / "twister" / "server.py"
 
 
-def load_victim_server(unique_name="victim_server_test"):
+def load_twister_server(unique_name="twister_server_test"):
     spec = importlib.util.spec_from_file_location(unique_name, SERVER_PATH)
     module = importlib.util.module_from_spec(spec)
     assert spec.loader is not None
@@ -22,13 +24,13 @@ def load_victim_server(unique_name="victim_server_test"):
     return module
 
 
-class VictimRegistryMixin:
+class TwisterRegistryMixin:
     def setUp(self):
         super().setUp()
         self._tmpdir = tempfile.TemporaryDirectory()
         self.registry_dir = Path(self._tmpdir.name) / "registry"
         self.registry_dir.mkdir(parents=True, exist_ok=True)
-        self.server = load_victim_server(f"victim_server_{id(self)}")
+        self.server = load_twister_server(f"twister_server_{id(self)}")
         self.server.REGISTRY_DIR = str(self.registry_dir)
         self.server.USERS_FILE = str(self.registry_dir / "user_registry.json")
         self.server.POSTS_FILE = str(self.registry_dir / "posts_registry.json")
@@ -36,7 +38,7 @@ class VictimRegistryMixin:
         self.addCleanup(self._tmpdir.cleanup)
 
 
-class VictimServerAppMixin(VictimRegistryMixin):
+class TwisterServerAppMixin(TwisterRegistryMixin):
     async def asyncSetUp(self):
         await super().asyncSetUp()
         self.server.seed_if_needed()
@@ -54,7 +56,7 @@ class VictimServerAppMixin(VictimRegistryMixin):
         self.addAsyncCleanup(self.runner.cleanup)
 
 
-class TestVictimRegistryPersistence(VictimRegistryMixin, unittest.TestCase):
+class TestTwisterRegistryPersistence(TwisterRegistryMixin, unittest.TestCase):
     def test_load_json_file_falls_back_for_missing_and_invalid_data(self):
         missing = self.registry_dir / "missing.json"
         invalid = self.registry_dir / "invalid.json"
@@ -87,8 +89,13 @@ class TestVictimRegistryPersistence(VictimRegistryMixin, unittest.TestCase):
 
         self.assertEqual(self.server.load_sessions_sync(), {"byToken": {}, "byUser": {}})
 
+    def test_load_sessions_sync_normalizes_non_dict_payload(self):
+        (self.registry_dir / "session_registry.json").write_text("[]", encoding="utf-8")
 
-class TestVictimServerRoutes(VictimServerAppMixin, unittest.IsolatedAsyncioTestCase):
+        self.assertEqual(self.server.load_sessions_sync(), {"byToken": {}, "byUser": {}})
+
+
+class TestTwisterServerRoutes(TwisterServerAppMixin, unittest.IsolatedAsyncioTestCase):
     async def _request_json(self, method, path, **kwargs):
         response = await self.client.request(method, self.base_url + path, **kwargs)
         self.addAsyncCleanup(response.release)
@@ -231,6 +238,150 @@ class TestVictimServerRoutes(VictimServerAppMixin, unittest.IsolatedAsyncioTestC
         response = await self.client.get(self.base_url + "/api/session")
         self.addAsyncCleanup(response.release)
         self.assertEqual(response.status, 404)
+
+    async def test_users_list_and_unknown_user_endpoints(self):
+        resp, payload = await self._request_json("GET", "/api/users")
+        self.assertEqual(resp.status, 200)
+        self.assertTrue(any(user["username"] == "alice" for user in payload))
+
+        detail_resp, _ = await self._request_json("GET", "/api/users/ghost")
+        self.assertEqual(detail_resp.status, 404)
+
+        posts_resp, _ = await self._request_json("GET", "/api/users/ghost/posts")
+        self.assertEqual(posts_resp.status, 404)
+
+    async def test_register_validation_branches(self):
+        invalid_json, _ = await self._request_json("POST", "/api/auth/register", data="not-json")
+        self.assertEqual(invalid_json.status, 400)
+
+        missing_fields, _ = await self._request_json(
+            "POST", "/api/auth/register", json={"username": "", "password": ""}
+        )
+        self.assertEqual(missing_fields.status, 400)
+
+        duplicate, _ = await self._request_json(
+            "POST", "/api/auth/register", json={"username": "alice", "password": "whatever"}
+        )
+        self.assertEqual(duplicate.status, 409)
+
+    async def test_login_invalid_json_returns_400(self):
+        resp, _ = await self._request_json("POST", "/api/auth/login", data="not-json")
+        self.assertEqual(resp.status, 400)
+
+    async def test_me_and_update_me_require_authentication(self):
+        me_resp, _ = await self._request_json("GET", "/api/me")
+        self.assertEqual(me_resp.status, 401)
+
+        update_resp, _ = await self._request_json("PUT", "/api/me", json={"displayName": "x"})
+        self.assertEqual(update_resp.status, 401)
+
+    async def test_update_me_invalid_json_after_login(self):
+        await self._request_json("POST", "/api/auth/login", json={"username": "alice", "password": "alice123"})
+        resp, _ = await self._request_json("PUT", "/api/me", data="not-json")
+        self.assertEqual(resp.status, 400)
+
+    async def test_posts_post_requires_auth_then_validates_content(self):
+        unauth, _ = await self._request_json("POST", "/api/posts", json={"content": "hi"})
+        self.assertEqual(unauth.status, 401)
+
+        await self._request_json("POST", "/api/auth/login", json={"username": "alice", "password": "alice123"})
+
+        invalid_json, _ = await self._request_json("POST", "/api/posts", data="not-json")
+        self.assertEqual(invalid_json.status, 400)
+
+        empty_content, _ = await self._request_json("POST", "/api/posts", json={"content": "   "})
+        self.assertEqual(empty_content.status, 400)
+
+    async def test_feed_tolerates_invalid_pagination(self):
+        resp, payload = await self._request_json("GET", "/api/feed?page=abc&pageSize=xyz")
+        self.assertEqual(resp.status, 200)
+        self.assertEqual(payload["page"], 1)
+        self.assertEqual(payload["pageSize"], self.server.DEFAULT_PAGE_SIZE)
+
+    async def test_session_with_unknown_token_returns_404(self):
+        self.client.cookie_jar.update_cookies({self.server.SESSION_COOKIE_NAME: "ghost-token"}, URL(self.base_url))
+        resp = await self.client.get(self.base_url + "/api/session")
+        self.addAsyncCleanup(resp.release)
+        self.assertEqual(resp.status, 404)
+
+    async def test_session_with_unparseable_expiry_is_tolerated(self):
+        await self.server.write_state(
+            sessions={
+                "byToken": {"tok-bad": {"user": "alice", "token": "tok-bad", "expiresAt": "not-a-date"}},
+                "byUser": {"alice": "tok-bad"},
+            }
+        )
+        self.client.cookie_jar.update_cookies({self.server.SESSION_COOKIE_NAME: "tok-bad"}, URL(self.base_url))
+        resp, payload = await self._request_json("GET", "/api/session")
+        self.assertEqual(resp.status, 200)
+        self.assertTrue(payload["active"])
+
+    async def test_me_and_update_me_with_deleted_user_return_404(self):
+        await self.server.write_state(
+            sessions={
+                "byToken": {"tok-ghost": {"user": "ghostuser", "token": "tok-ghost", "expiresAt": "2999-01-01T00:00:00"}},
+                "byUser": {"ghostuser": "tok-ghost"},
+            }
+        )
+        self.client.cookie_jar.update_cookies({self.server.SESSION_COOKIE_NAME: "tok-ghost"}, URL(self.base_url))
+
+        me_resp, _ = await self._request_json("GET", "/api/me")
+        self.assertEqual(me_resp.status, 404)
+
+        update_resp, _ = await self._request_json("PUT", "/api/me", json={"displayName": "x"})
+        self.assertEqual(update_resp.status, 404)
+
+    async def test_handle_posts_rejects_unsupported_method(self):
+        response = await self.server.handle_posts(SimpleNamespace(method="DELETE"))
+        self.assertEqual(response.status, 405)
+
+    async def test_handle_users_rejects_non_get_method(self):
+        response = await self.server.handle_users(SimpleNamespace(method="POST"))
+        self.assertEqual(response.status, 405)
+
+    async def test_static_fallback_serves_file_and_reports_missing(self):
+        served = await self.client.get(self.base_url + "/feed.html")
+        self.addAsyncCleanup(served.release)
+        self.assertEqual(served.status, 200)
+
+        missing = await self.client.get(self.base_url + "/does-not-exist.zzz")
+        self.addAsyncCleanup(missing.release)
+        self.assertEqual(missing.status, 404)
+
+    async def test_handle_static_empty_filename_serves_index(self):
+        response = await self.server.handle_static(SimpleNamespace(match_info={"filename": ""}))
+        self.assertEqual(response.status, 200)
+
+    async def test_cors_middleware_preflight_and_passthrough(self):
+        async def handler(_request):
+            return web.Response(text="ok")
+
+        passthrough = await self.server.cors_middleware(SimpleNamespace(method="GET"), handler)
+        self.assertEqual(passthrough.text, "ok")
+        self.assertEqual(passthrough.headers["Access-Control-Allow-Origin"], "*")
+
+        preflight = await self.server.cors_middleware(SimpleNamespace(method="OPTIONS"), handler)
+        self.assertEqual(preflight.status, 200)
+        self.assertEqual(preflight.headers["Access-Control-Allow-Methods"], "GET,POST,PUT,DELETE,OPTIONS")
+
+    async def test_start_async_server_bootstraps_site(self):
+        fake_runner = MagicMock()
+        fake_runner.setup = AsyncMock()
+        fake_site = MagicMock()
+        fake_site.start = AsyncMock()
+
+        with patch.object(self.server.web, "Application", return_value="app"), patch.object(
+            self.server, "setup_routes"
+        ) as setup_routes, patch.object(self.server.web, "AppRunner", return_value=fake_runner), patch.object(
+            self.server.web, "TCPSite", return_value=fake_site
+        ), patch.object(self.server.asyncio, "sleep", new=AsyncMock(side_effect=RuntimeError("stop"))), patch.object(
+            self.server, "seed_if_needed"
+        ), patch("builtins.print"):
+            with self.assertRaisesRegex(RuntimeError, "stop"):
+                await self.server.start_async_server()
+
+        setup_routes.assert_called_once_with("app")
+        fake_site.start.assert_awaited_once_with()
 
 
 if __name__ == "__main__":

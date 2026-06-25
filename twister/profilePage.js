@@ -94,7 +94,7 @@ function createPostNode(post) {
 function renderPosts(posts) {
     dom.userPostsList.innerHTML = '';
     if (!posts.length) {
-        dom.userPostsList.innerHTML = '<article class="post-card"><p class="post-content">Este usuario aun no tiene posts.</p></article>';
+        dom.userPostsList.innerHTML = '<article class="post-card"><p class="post-content">Este usuario aún no tiene posts.</p></article>';
         return;
     }
     for (const post of posts) {
@@ -144,7 +144,7 @@ function renderProfileBasics(user, postsTotal) {
     dom.profileBio.textContent = user.bio || 'Sin bio';
     dom.profileJoined.textContent = formatDate(user.joinedAt);
     dom.profilePostsCount.textContent = String(postsTotal || 0);
-    dom.profileMode.textContent = state.isOwnProfile ? 'Edicion' : 'Lectura';
+    dom.profileMode.textContent = state.isOwnProfile ? 'Edición' : 'Lectura';
     decorateAvatar(dom.profileAvatar, user);
 }
 
@@ -173,7 +173,7 @@ async function loadProfile() {
         state.viewedUser = null;
         dom.editCard.classList.add('hidden');
         renderPosts([]);
-        setFeedback(dom.profileFeedback, 'Inicia sesion para ver tu perfil o usa /profile/{usuario}.', true);
+        setFeedback(dom.profileFeedback, 'Inicia sesión para ver tu perfil o usa /profile/{usuario}.', true);
         return;
     }
 

@@ -3,31 +3,31 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TestVictima | Feed</title>
-    <link rel="stylesheet" href="TestVictima.css">
+    <title>Twister | Feed</title>
+    <link rel="stylesheet" href="twister.css">
 </head>
 <body>
     <header class="topbar">
         <div class="brand-block">
-            <div class="brand-mark">TV</div>
+            <div class="brand-mark">TW</div>
             <div>
                 <p class="eyebrow">Mini social app</p>
                 <h1>Feed</h1>
             </div>
         </div>
-        <nav class="main-nav" aria-label="Navegacion principal">
+        <nav class="main-nav" aria-label="Navegación principal">
             <span class="user-chip hidden" id="headerSessionUser">@-</span>
             <a class="active" id="homeNavLink" href="/feed">Inicio</a>
             <a href="/profile">Mi perfil</a>
-            <button class="button button-ghost nav-logout hidden" id="headerLogoutButton" type="button">Cerrar sesion</button>
+            <button class="button button-ghost nav-logout hidden" id="headerLogoutButton" type="button">Cerrar sesión</button>
         </nav>
     </header>
 
     <main class="shell">
         <section class="card hero-simple">
-            <p class="eyebrow">Ultimos posts</p>
+            <p class="eyebrow">Últimos posts</p>
             <h2>Feed global</h2>
-            <p>Visualiza los ultimos posts de todos los usuarios y recorre el historial con paginacion.</p>
+            <p>Visualiza los últimos posts de todos los usuarios y recorre el historial con paginación.</p>
         </section>
 
         <section class="card composer-card" id="composerCard">
@@ -51,14 +51,14 @@
             <div class="section-head compact">
                 <div>
                     <p class="eyebrow">Timeline</p>
-                    <h3>Posts mas recientes</h3>
+                    <h3>Posts más recientes</h3>
                 </div>
                 <strong id="pageBadge">1 / 1</strong>
             </div>
             <div id="feedList" class="feed-list"></div>
             <div class="pager">
                 <button class="button button-ghost" id="prevPageButton" type="button">Anterior</button>
-                <span class="pager-label" id="pagerLabel">Pagina 1 de 1</span>
+                <span class="pager-label" id="pagerLabel">Página 1 de 1</span>
                 <button class="button button-ghost" id="nextPageButton" type="button">Siguiente</button>
             </div>
         </section>

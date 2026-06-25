@@ -72,10 +72,10 @@ function Stop-ByCommandLinePattern {
 Write-Step "Stopping tunnel processes (cloudflared/ngrok)"
 Stop-ByName -Names @("cloudflared", "ngrok")
 
-Write-Step "Stopping Python processes for SOXSS and testVictima"
+Write-Step "Stopping Python processes for SOXSS and twister"
 Stop-ByCommandLinePattern -Patterns @(
     "Socxss\.py",
-    "testVictima[\\/]server\.py",
+    "twister[\\/]server\.py",
     "server[\\/]server\.py"
 )
 

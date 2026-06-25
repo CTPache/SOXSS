@@ -19,7 +19,7 @@ SOXSS includes both fast unit tests and browser-based Selenium E2E tests.
 
 Fast suite:
 ```bash
-python -m unittest tests.test_runtime_unit tests.test_modules_unit tests.test_console_commands_unit tests.test_server_modules_unit tests.test_victim_server_unit -v
+python -m unittest tests.test_runtime_unit tests.test_modules_unit tests.test_console_commands_unit tests.test_server_modules_unit tests.test_twister_server_unit -v
 ```
 
 Selenium E2E suite:
@@ -29,7 +29,7 @@ python -m unittest tests.selenium.test_soxss_selenium -v
 
 Coverage report for the fast suite:
 ```bash
-coverage run -m unittest tests.test_runtime_unit tests.test_modules_unit tests.test_console_commands_unit tests.test_server_modules_unit tests.test_victim_server_unit -v
+coverage run -m unittest tests.test_runtime_unit tests.test_modules_unit tests.test_console_commands_unit tests.test_server_modules_unit tests.test_twister_server_unit -v
 coverage report -m
 ```
 

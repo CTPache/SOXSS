@@ -1,6 +1,7 @@
 import asyncio
 import io
 import importlib
+import json
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -126,6 +127,68 @@ class TestConsoleServer(SocksUtilStateMixin, unittest.IsolatedAsyncioTestCase):
         fake_runner.setup.assert_awaited_once_with()
         fake_site.start.assert_awaited_once_with()
 
+    async def test_handle_config_returns_public_http_settings(self):
+        response = await console_server.handle_config(SimpleNamespace())
+
+        data = json.loads(response.text)
+        self.assertEqual(data["http_host"], console_server.config.PUBLIC_HTTP_HOST)
+        self.assertEqual(data["http_port"], console_server.config.PUBLIC_HTTP_PORT)
+        self.assertEqual(response.headers["Access-Control-Allow-Origin"], "*")
+
+    def test_build_public_http_base_covers_host_and_port_variants(self):
+        with patch.object(console_server.config, "PUBLIC_HTTP_HOST", ""):
+            self.assertEqual(console_server._build_public_http_base(), "")
+
+        with patch.object(console_server.config, "PUBLIC_HTTP_HOST", "example.com"), patch.object(
+            console_server.config, "PUBLIC_HTTP_SCHEME", "https"
+        ), patch.object(console_server.config, "PUBLIC_HTTP_PORT", None):
+            self.assertEqual(console_server._build_public_http_base(), "https://example.com/")
+
+        with patch.object(console_server.config, "PUBLIC_HTTP_HOST", "example.com"), patch.object(
+            console_server.config, "PUBLIC_HTTP_SCHEME", "https"
+        ), patch.object(console_server.config, "PUBLIC_HTTP_PORT", 9000):
+            self.assertEqual(console_server._build_public_http_base(), "https://example.com:9000/")
+
+        with patch.object(console_server.config, "PUBLIC_HTTP_HOST", "host:1234"), patch.object(
+            console_server.config, "PUBLIC_HTTP_PORT", 9000
+        ):
+            # A host that already carries a port must not get a second one appended.
+            self.assertTrue(console_server._build_public_http_base().endswith("host:1234/"))
+
+
+class TestPayloadServerHelpers(unittest.IsolatedAsyncioTestCase):
+    def test_clean_public_host_strips_schemes_and_slashes(self):
+        self.assertEqual(payload_server._clean_public_host("http://example.com/"), "example.com")
+        self.assertEqual(payload_server._clean_public_host("https://example.com"), "example.com")
+        self.assertEqual(payload_server._clean_public_host("ws://example.com/"), "example.com")
+        self.assertEqual(payload_server._clean_public_host("wss://example.com"), "example.com")
+        self.assertEqual(payload_server._clean_public_host("  plain.host  "), "plain.host")
+        self.assertEqual(payload_server._clean_public_host(None), "")
+
+    def test_host_has_explicit_port_handles_ipv6_and_hostname(self):
+        self.assertTrue(payload_server._host_has_explicit_port("[::1]:8080"))
+        self.assertFalse(payload_server._host_has_explicit_port("[::1]"))
+        self.assertTrue(payload_server._host_has_explicit_port("example.com:443"))
+        self.assertFalse(payload_server._host_has_explicit_port("example.com"))
+
+    def test_build_public_base_url_covers_all_branches(self):
+        self.assertEqual(payload_server._build_public_base_url("https", "", None), "")
+        self.assertEqual(payload_server._build_public_base_url("https", "example.com", 8443), "https://example.com:8443")
+        self.assertEqual(payload_server._build_public_base_url("https", "example.com:443", 8443), "https://example.com:443")
+        self.assertEqual(payload_server._build_public_base_url("https", "example.com", None), "https://example.com")
+
+    async def test_cors_middleware_handles_preflight_and_passthrough(self):
+        async def handler(_request):
+            return web.Response(text="ok")
+
+        passthrough = await payload_server.cors_middleware(SimpleNamespace(method="GET"), handler)
+        self.assertEqual(passthrough.text, "ok")
+        self.assertEqual(passthrough.headers["Access-Control-Allow-Origin"], "*")
+
+        preflight = await payload_server.cors_middleware(SimpleNamespace(method="OPTIONS"), handler)
+        self.assertEqual(preflight.status, 200)
+        self.assertEqual(preflight.headers["Access-Control-Allow-Methods"], "GET,POST,PUT,DELETE,OPTIONS")
+
 
 class TestPayloadServer(unittest.IsolatedAsyncioTestCase):
     async def test_handle_static_returns_404_for_missing_file(self):
@@ -171,8 +234,10 @@ class TestPayloadServer(unittest.IsolatedAsyncioTestCase):
         self.assertIn(payload_server.config.PUBLIC_WS_HOST, response.text)
         self.assertIn(payload_server.config.PUBLIC_HTTP_SCHEME, response.text)
         self.assertIn(payload_server.config.PUBLIC_WS_SCHEME, response.text)
-        self.assertIn(str(payload_server.config.PUBLIC_HTTP_PORT), response.text)
-        self.assertIn(str(payload_server.config.PUBLIC_WS_PORT), response.text)
+        hport = '' if payload_server.config.PUBLIC_HTTP_PORT in (None, '', 0, '0') else str(payload_server.config.PUBLIC_HTTP_PORT)
+        wport = '' if payload_server.config.PUBLIC_WS_PORT in (None, '', 0, '0') else str(payload_server.config.PUBLIC_WS_PORT)
+        self.assertIn(hport, response.text)
+        self.assertIn(wport, response.text)
         set_key_iv.assert_called_once_with("sid-123", "secret-key", "deadbeef")
 
     def test_setup_routes_registers_static_handler(self):
@@ -379,3 +444,158 @@ class TestMITMServer(unittest.IsolatedAsyncioTestCase):
 
         http_server.assert_called_once()
         fake_httpd.serve_forever.assert_called_once_with()
+
+
+class TestMITMRewriters(unittest.TestCase):
+    def test_prefix_root_relative_path_rules(self):
+        self.assertEqual(mitm_server.prefix_root_relative_path("/a", "sid"), "/sid/a")
+        self.assertEqual(mitm_server.prefix_root_relative_path("//cdn/x", "sid"), "//cdn/x")
+        self.assertEqual(mitm_server.prefix_root_relative_path("relative", "sid"), "relative")
+        self.assertIsNone(mitm_server.prefix_root_relative_path(None, "sid"))
+
+    def test_rewrite_srcset_value_prefixes_each_candidate(self):
+        out = mitm_server.rewrite_srcset_value("/a.png 1x, /b.png 2x , ,", "sid")
+        self.assertEqual(out, "/sid/a.png 1x, /sid/b.png 2x")
+
+    def test_rewrite_css_for_mitm_rewrites_imports_and_urls(self):
+        css = "@import '/x.css'; a{background:url('/y.png')} b{background:url(/z.png)}"
+        out = mitm_server.rewrite_css_for_mitm(css, "sid")
+        self.assertIn("/sid/x.css", out)
+        self.assertIn("/sid/y.png", out)
+        self.assertIn("/sid/z.png", out)
+
+    def test_rewrite_html_injects_base_and_bootstrap_with_head(self):
+        html = '<html><head><base href="/old"><link href="/style.css"></head><body><a href="/p">x</a></body></html>'
+        out = mitm_server.rewrite_html_for_mitm(html, "sid")
+        self.assertIn('<base href="/sid/">', out)
+        self.assertNotIn('href="/old"', out)
+        self.assertIn('const sid = "sid"', out)  # build_proxy_bootstrap output
+        self.assertIn('href="/sid/style.css"', out)
+
+    def test_rewrite_html_injects_bootstrap_before_body_without_head(self):
+        out = mitm_server.rewrite_html_for_mitm("<body><p>hi</p></body>", "sid")
+        self.assertIn("normalizeVisibleUrl", out)
+        self.assertIn("<body>", out)
+
+    def test_rewrite_html_falls_back_when_markup_has_no_head_or_body(self):
+        out = mitm_server.rewrite_html_for_mitm("<html>content</html>", "sid")
+        self.assertIn('<base href="/sid/">', out)
+        self.assertIn("normalizeVisibleUrl", out)
+
+    def test_rewrite_html_returns_plain_text_unchanged(self):
+        self.assertEqual(mitm_server.rewrite_html_for_mitm("just plain text", "sid"), "just plain text")
+
+
+class TestResolveSocketForMITM(SocksUtilStateMixin, unittest.TestCase):
+    def test_returns_direct_match(self):
+        socket = SimpleNamespace(request=SimpleNamespace(path="/sid-1"))
+        with patch("modules.MITMServer.socksUtil.getSocketBySid", return_value=socket):
+            self.assertEqual(mitm_server.resolve_socket_for_mitm("sid-1"), (socket, "sid-1", False))
+
+    def test_falls_back_to_current_socket(self):
+        current = SimpleNamespace(request=SimpleNamespace(path="/sid-current"))
+        with patch("modules.MITMServer.socksUtil.getSocketBySid", return_value=None), patch(
+            "modules.MITMServer.socksUtil.getCurrent", return_value=current
+        ):
+            self.assertEqual(mitm_server.resolve_socket_for_mitm("stale"), (current, "sid-current", True))
+
+    def test_falls_back_to_single_socket(self):
+        only = SimpleNamespace(request=SimpleNamespace(path="/sid-only"))
+        socksUtil.sockets.append(only)
+        with patch("modules.MITMServer.socksUtil.getSocketBySid", return_value=None), patch(
+            "modules.MITMServer.socksUtil.getCurrent", return_value=None
+        ):
+            self.assertEqual(mitm_server.resolve_socket_for_mitm("stale"), (only, "sid-only", True))
+
+    def test_returns_none_when_no_socket_resolves(self):
+        with patch("modules.MITMServer.socksUtil.getSocketBySid", return_value=None), patch(
+            "modules.MITMServer.socksUtil.getCurrent", return_value=None
+        ):
+            self.assertEqual(mitm_server.resolve_socket_for_mitm("stale"), (None, "stale", False))
+
+
+class TestMITMPerformRequestBranches(unittest.IsolatedAsyncioTestCase):
+    def setUp(self):
+        super().setUp()
+        mitm_server.cache.clear()
+        self.addCleanup(mitm_server.cache.clear)
+
+    @staticmethod
+    def _make_handler(path, headers=None, body=b""):
+        handler = object.__new__(mitm_server.MITMHTTPRequestHandler)
+        handler.path = path
+        handler.headers = headers or {}
+        handler.rfile = io.BytesIO(body)
+        handler.wfile = io.BytesIO()
+        handler.send_response = MagicMock()
+        handler.send_header = MagicMock()
+        handler.end_headers = MagicMock()
+        return handler
+
+    async def test_uses_query_sid_and_forwards_remaining_query(self):
+        handler = self._make_handler("/page?__soxss_sid=sid-q&foo=bar")
+        captured = {}
+
+        async def fake_send_message(socket, payload):
+            captured["payload"] = payload
+            mitm_server.cache["fixed-key"] = {"type": "text/html", "content": "ok", "method": "GET"}
+
+        with patch("modules.MITMServer.socksUtil.getSocketBySid", return_value=object()), patch(
+            "modules.MITMServer.cryptoUtil.sendSecretMessage", new=AsyncMock(side_effect=fake_send_message)
+        ), patch("modules.MITMServer.datetime.datetime") as datetime_mock, patch("builtins.print"):
+            datetime_mock.now.return_value = "fixed-key"
+            await mitm_server.MITMHTTPRequestHandler.performRequest(handler, "GET")
+
+        self.assertIn("foo=bar", captured["payload"])
+        handler.send_response.assert_called_once_with(200)
+
+    async def test_logs_sid_fallback_when_resolution_uses_fallback(self):
+        handler = self._make_handler("/stale/page")
+
+        async def fake_send_message(socket, payload):
+            mitm_server.cache["fixed-key"] = {"type": "text/html", "content": "ok", "method": "GET"}
+
+        with patch("modules.MITMServer.resolve_socket_for_mitm", return_value=(object(), "real-sid", True)), patch(
+            "modules.MITMServer.cryptoUtil.sendSecretMessage", new=AsyncMock(side_effect=fake_send_message)
+        ), patch("modules.MITMServer.datetime.datetime") as datetime_mock, patch("builtins.print") as print_mock:
+            datetime_mock.now.return_value = "fixed-key"
+            await mitm_server.MITMHTTPRequestHandler.performRequest(handler, "GET")
+
+        self.assertTrue(any("MITM SID fallback" in str(call.args[0]) for call in print_mock.call_args_list if call.args))
+
+    async def test_times_out_when_response_never_arrives(self):
+        handler = self._make_handler("/sid-1/slow")
+        times = iter([0.0, 100.0, 100.0])
+        loop = SimpleNamespace(time=lambda: next(times))
+
+        async def fake_send_message(socket, payload):
+            return None
+
+        with patch("modules.MITMServer.socksUtil.getSocketBySid", return_value=object()), patch(
+            "modules.MITMServer.cryptoUtil.sendSecretMessage", new=AsyncMock(side_effect=fake_send_message)
+        ), patch("modules.MITMServer.asyncio.get_running_loop", return_value=loop), patch(
+            "modules.MITMServer.asyncio.sleep", new=AsyncMock()
+        ), patch("modules.MITMServer.datetime.datetime") as datetime_mock, patch("builtins.print"):
+            datetime_mock.now.return_value = "slow-key"
+            await mitm_server.MITMHTTPRequestHandler.performRequest(handler, "GET")
+
+        handler.send_response.assert_called_once_with(404)
+        self.assertIn("Timed out", handler.wfile.getvalue().decode("utf-8"))
+
+    async def test_rewrites_css_response_body(self):
+        handler = self._make_handler("/sid-1/style.css")
+
+        async def fake_send_message(socket, payload):
+            mitm_server.cache["css-key"] = {
+                "type": "text/css",
+                "content": "a{background:url(/x.png)}",
+                "method": "GET",
+            }
+
+        with patch("modules.MITMServer.socksUtil.getSocketBySid", return_value=object()), patch(
+            "modules.MITMServer.cryptoUtil.sendSecretMessage", new=AsyncMock(side_effect=fake_send_message)
+        ), patch("modules.MITMServer.datetime.datetime") as datetime_mock, patch("builtins.print"):
+            datetime_mock.now.return_value = "css-key"
+            await mitm_server.MITMHTTPRequestHandler.performRequest(handler, "GET")
+
+        self.assertIn("/sid-1/x.png", handler.wfile.getvalue().decode("utf-8"))

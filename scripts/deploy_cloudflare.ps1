@@ -4,8 +4,8 @@ param(
     [string]$CloudflaredExe = "cloudflared",
     [int]$HttpPort = 8000,
     [int]$WsPort = 8765,
-    [int]$TestVictimPort = 7070,
-    [switch]$NoTestVictimTunnel,
+    [int]$TwisterPort = 7070,
+    [switch]$NoTwisterTunnel,
     [switch]$NoRun,
     [switch]$FreshStart,
     [switch]$Quiet
@@ -165,25 +165,25 @@ Write-Step "Using cloudflared binary: $CloudflaredExe"
 
 $httpLocal = "http://127.0.0.1:$HttpPort"
 $wsLocal = "http://127.0.0.1:$WsPort"
-$testVictimLocal = "http://127.0.0.1:$TestVictimPort"
+$twisterLocal = "http://127.0.0.1:$TwisterPort"
 
 $httpLog = Join-Path $env:TEMP "soxss-cloudflare-http.log"
 $wsLog = Join-Path $env:TEMP "soxss-cloudflare-ws.log"
-$testVictimLog = Join-Path $env:TEMP "soxss-cloudflare-testvictim.log"
+$twisterLog = Join-Path $env:TEMP "soxss-cloudflare-twister.log"
 
 Write-Step "Starting Cloudflare quick tunnels"
 $httpProc = Start-QuickTunnel -Name "http" -CloudflaredPath $CloudflaredExe -LocalUrl $httpLocal -LogPath $httpLog -WorkDir $RepoRoot
 $wsProc = Start-QuickTunnel -Name "ws" -CloudflaredPath $CloudflaredExe -LocalUrl $wsLocal -LogPath $wsLog -WorkDir $RepoRoot
-$testVictimProc = $null
-if (-not $NoTestVictimTunnel) {
-    $testVictimProc = Start-QuickTunnel -Name "testVictim" -CloudflaredPath $CloudflaredExe -LocalUrl $testVictimLocal -LogPath $testVictimLog -WorkDir $RepoRoot
+$twisterProc = $null
+if (-not $NoTwisterTunnel) {
+    $twisterProc = Start-QuickTunnel -Name "twister" -CloudflaredPath $CloudflaredExe -LocalUrl $twisterLocal -LogPath $twisterLog -WorkDir $RepoRoot
 }
 
 $httpPublic = Wait-TunnelPublicUrl -Name "http" -Process $httpProc -LogPath $httpLog
 $wsPublic = Wait-TunnelPublicUrl -Name "ws" -Process $wsProc -LogPath $wsLog
-$testVictimPublic = $null
-if (-not $NoTestVictimTunnel) {
-    $testVictimPublic = Wait-TunnelPublicUrl -Name "testVictim" -Process $testVictimProc -LogPath $testVictimLog
+$twisterPublic = $null
+if (-not $NoTwisterTunnel) {
+    $twisterPublic = Wait-TunnelPublicUrl -Name "twister" -Process $twisterProc -LogPath $twisterLog
 }
 
 $httpParsed = Parse-PublicUrl -Url $httpPublic
@@ -191,8 +191,8 @@ $wsParsed = Parse-PublicUrl -Url $wsPublic
 
 Write-Step "Resolved HTTP tunnel: $httpPublic"
 Write-Step "Resolved WS tunnel:   $wsPublic"
-if (-not $NoTestVictimTunnel) {
-    Write-Step "Resolved TestVictim tunnel: $testVictimPublic"
+if (-not $NoTwisterTunnel) {
+    Write-Step "Resolved Twister tunnel: $twisterPublic"
 }
 
 Update-ConfigValue -FilePath $configPath -Name "PUBLIC_HTTP_HOST" -ValueLiteral ('"{0}"' -f $httpParsed.Host)
@@ -208,8 +208,8 @@ Write-Host "=== SOXSS PUBLIC ENDPOINTS (CLOUDFLARE) ==="
 Write-Host "Payload URL:    $httpPublic/webSocket.js"
 Write-Host "Script base:    $httpPublic/"
 Write-Host "WS endpoint:    $($wsPublic -replace '^https://', 'wss://')"
-if (-not $NoTestVictimTunnel) {
-    Write-Host "TestVictim URL: $testVictimPublic/"
+if (-not $NoTwisterTunnel) {
+    Write-Host "Twister URL: $twisterPublic/"
 }
 Write-Host "==========================================="
 Write-Host ""

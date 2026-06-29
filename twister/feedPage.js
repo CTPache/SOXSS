@@ -1,4 +1,4 @@
-(() => {
+
 const state = {
     user: null,
     session: null,
@@ -22,6 +22,7 @@ const dom = {
     prevPageButton: document.getElementById('prevPageButton'),
     nextPageButton: document.getElementById('nextPageButton'),
     postTemplate: document.getElementById('postTemplate'),
+    maxLength: 280,
 };
 
 function apiFetch(url, options = {}) {
@@ -166,7 +167,7 @@ async function handlePostSubmit(event) {
             body: JSON.stringify({ content }),
         });
         dom.postContentInput.value = '';
-        dom.characterCount.textContent = '0 / 280';
+        dom.characterCount.textContent = '0 / ' + dom.maxLength;
         state.page = 1;
         await loadFeed();
         setFeedback(dom.postFeedback, 'Post publicado.', false);
@@ -204,7 +205,7 @@ function wireEvents() {
         }
     });
     dom.postContentInput.addEventListener('input', () => {
-        dom.characterCount.textContent = `${dom.postContentInput.value.length} / 280`;
+        dom.characterCount.textContent = `${dom.postContentInput.value.length} / ${dom.maxLength}`;
     });
 }
 
@@ -222,4 +223,3 @@ main().catch((error) => {
     setFeedback(dom.postFeedback, 'No se pudo cargar el feed.', true);
 });
 
-})();

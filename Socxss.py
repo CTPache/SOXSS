@@ -111,7 +111,7 @@ def apply_config_overrides(parsed_args):
 
 
 async def exec(websocket):
-    remote_ip = websocket.remote_address[0] if websocket.remote_address else "unknown"
+    remote_ip = websocket.request.headers.get("CF-Connecting-IP") or (websocket.remote_address[0] if websocket.remote_address else "unknown")
     # In websockets.asyncio, path is in websocket.request.path
     sid = websocket.request.path.strip("/")
     print(f"Connected from {remote_ip} (SID: {sid})")

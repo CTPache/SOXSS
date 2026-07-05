@@ -31,19 +31,6 @@ function Write-Step([string]$Message) {
     Write-Host "[deploy-cloudflare] $Message"
 }
 
-function Update-ConfigValue {
-    param(
-        [string]$FilePath,
-        [string]$Name,
-        [string]$ValueLiteral
-    )
-
-    $pattern = "(?m)^\s*$([regex]::Escape($Name))\s*=\s*.*$"
-    $replacement = "$Name = $ValueLiteral"
-    $updated = [regex]::Replace((Get-Content -Raw -Path $FilePath), $pattern, $replacement)
-    Set-Content -Path $FilePath -Value $updated -Encoding UTF8
-}
-
 function Resolve-CloudflaredExecutable {
     param([string]$InputPath)
 
@@ -153,11 +140,6 @@ function Wait-TunnelPublicUrl {
     throw "Could not resolve public URL for tunnel '$Name'. Log tail:`n$tail"
 }
 
-$configPath = Join-Path $RepoRoot "config.py"
-if (-not (Test-Path -Path $configPath)) {
-    throw "config.py was not found at: $configPath"
-}
-
 Write-Step "Repository root: $RepoRoot"
 Write-Step "Resolving cloudflared executable"
 $CloudflaredExe = Resolve-CloudflaredExecutable -InputPath $CloudflaredExe
@@ -195,14 +177,6 @@ if (-not $NoTwisterTunnel) {
     Write-Step "Resolved Twister tunnel: $twisterPublic"
 }
 
-Update-ConfigValue -FilePath $configPath -Name "PUBLIC_HTTP_HOST" -ValueLiteral ('"{0}"' -f $httpParsed.Host)
-Update-ConfigValue -FilePath $configPath -Name "PUBLIC_WS_HOST" -ValueLiteral ('"{0}"' -f $wsParsed.Host)
-Update-ConfigValue -FilePath $configPath -Name "PUBLIC_HTTP_SCHEME" -ValueLiteral '"https"'
-Update-ConfigValue -FilePath $configPath -Name "PUBLIC_WS_SCHEME" -ValueLiteral '"wss"'
-Update-ConfigValue -FilePath $configPath -Name "PUBLIC_HTTP_PORT" -ValueLiteral "None"
-Update-ConfigValue -FilePath $configPath -Name "PUBLIC_WS_PORT" -ValueLiteral "None"
-
-Write-Step "Config updated successfully"
 Write-Host ""
 Write-Host "=== SOXSS PUBLIC ENDPOINTS (CLOUDFLARE) ==="
 Write-Host "Payload URL:    $httpPublic/webSocket.js"

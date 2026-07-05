@@ -14,9 +14,9 @@ import cryptoUtil
 import socksUtil
 
 
-def make_websocket(path="/sid-1", remote_ip="127.0.0.1", socket_id="socket-1"):
+def make_websocket(path="/sid-1", remote_ip="127.0.0.1", socket_id="socket-1", headers=None):
     websocket = SimpleNamespace(
-        request=SimpleNamespace(path=path),
+        request=SimpleNamespace(path=path, headers=headers if headers is not None else {}),
         remote_ip=remote_ip,
         id=socket_id,
     )
@@ -199,6 +199,36 @@ class TestSocxssRuntime(SocksUtilStateMixin, CryptoUtilStateMixin, SocxssImportM
 
         self.assertTrue(any("Message processing error" in str(call.args[0]) for call in print_mock.call_args_list))
         self.assertNotIn(websocket, socksUtil.sockets)
+
+    async def test_exec_prefers_cf_connecting_ip_header(self):
+        socxss = self.load_socxss_module()
+        websocket = make_websocket(
+            path="/sid-cf",
+            remote_ip="10.0.0.9",
+            headers={"CF-Connecting-IP": "203.0.113.7"},
+        )
+        websocket.recv = AsyncMock(side_effect=[FakeConnectionClosed()])
+
+        with patch.object(socxss, "modules", {0: SimpleNamespace(handleMessage=AsyncMock())}), patch.object(
+            socxss, "defaultModule", 0
+        ), patch.object(socxss.exceptions, "ConnectionClosed", FakeConnectionClosed), patch("builtins.print"):
+            await socxss.exec(websocket)
+
+        # The proxied client IP from Cloudflare must win over the raw socket address.
+        self.assertEqual(websocket.remote_ip, "203.0.113.7")
+
+    async def test_exec_falls_back_to_unknown_without_header_or_address(self):
+        socxss = self.load_socxss_module()
+        websocket = make_websocket(path="/sid-anon")
+        websocket.remote_address = None
+        websocket.recv = AsyncMock(side_effect=[FakeConnectionClosed()])
+
+        with patch.object(socxss, "modules", {0: SimpleNamespace(handleMessage=AsyncMock())}), patch.object(
+            socxss, "defaultModule", 0
+        ), patch.object(socxss.exceptions, "ConnectionClosed", FakeConnectionClosed), patch("builtins.print"):
+            await socxss.exec(websocket)
+
+        self.assertEqual(websocket.remote_ip, "unknown")
 
     async def test_main_starts_http_console_and_websocket_services(self):
         socxss = self.load_socxss_module()

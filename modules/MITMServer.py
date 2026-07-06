@@ -12,6 +12,7 @@ import config
 cache = {}
 mod = None
 SID_QUERY_PARAM = "__soxss_sid"
+SID_PATH_RE = re.compile(r'^[0-9a-fA-F]{32}$')
 
 HTML_ABSOLUTE_ATTR_RE = re.compile(r'(?i)(\b(?:href|src|action|formaction|poster|data)\s*=\s*["\'])/(?!/)')
 HTML_SRCSET_RE = re.compile(r'(?is)(\bsrcset\s*=\s*["\'])(.*?)(["\'])')
@@ -210,6 +211,54 @@ def resolve_socket_for_mitm(sid):
 
     return None, sid, False
 
+
+def extract_sid_from_referer(referer):
+    if not referer:
+        return ""
+    try:
+        parsed = urlsplit(referer)
+    except Exception:
+        return ""
+
+    query_items = parse_qsl(parsed.query, keep_blank_values=True)
+    for key, value in query_items:
+        if key == SID_QUERY_PARAM and value:
+            return value
+
+    path_parts = [part for part in parsed.path.split('/') if part]
+    if path_parts and SID_PATH_RE.match(path_parts[0]):
+        return path_parts[0]
+    return ""
+
+
+def parse_mitm_target(path, headers):
+    parsed = urlsplit(path)
+    args = [a for a in parsed.path.split('/') if a]
+    query_items = parse_qsl(parsed.query, keep_blank_values=True)
+    query_sid = next((value for key, value in query_items if key == SID_QUERY_PARAM), "")
+    forwarded_query = [(key, value) for key, value in query_items if key != SID_QUERY_PARAM]
+
+    sid = ""
+    target_path = 'base_url'
+
+    if query_sid:
+        sid = query_sid
+        if parsed.path and parsed.path != '/':
+            target_path = parsed.path
+    elif args and SID_PATH_RE.match(args[0]):
+        sid = args[0]
+        if len(args) > 1:
+            target_path = "/" + "/".join(args[1:])
+    else:
+        sid = extract_sid_from_referer(headers.get('Referer', ''))
+        if parsed.path and parsed.path != '/':
+            target_path = parsed.path
+
+    if forwarded_query and target_path != 'base_url':
+        target_path = f"{target_path}?{urlencode(forwarded_query)}"
+
+    return sid, target_path
+
 class MITMHTTPRequestHandler(BaseHTTPRequestHandler):
 
     def do_GET(self):
@@ -218,6 +267,23 @@ class MITMHTTPRequestHandler(BaseHTTPRequestHandler):
     def do_POST(self):
         asyncio.run(self.performRequest('POST'))
 
+    def do_PUT(self):
+        asyncio.run(self.performRequest('PUT'))
+
+    def do_PATCH(self):
+        asyncio.run(self.performRequest('PATCH'))
+
+    def do_DELETE(self):
+        asyncio.run(self.performRequest('DELETE'))
+
+    def do_OPTIONS(self):
+        self.send_response(200)
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With")
+        self.send_header("Access-Control-Max-Age", "86400")
+        self.end_headers()
+
     async def performRequest(self, method):
 
         parsed = urlsplit(self.path)
@@ -225,28 +291,16 @@ class MITMHTTPRequestHandler(BaseHTTPRequestHandler):
         if "favicon" in parsed.path:
             return
 
-        args = [a for a in parsed.path.split('/') if a]
-        query_items = parse_qsl(parsed.query, keep_blank_values=True)
-        query_sid = next((value for key, value in query_items if key == SID_QUERY_PARAM), "")
-        forwarded_query = [(key, value) for key, value in query_items if key != SID_QUERY_PARAM]
-
-        sid = ""
-        path = 'base_url'
-        if query_sid:
-            sid = query_sid
-            if parsed.path and parsed.path != '/':
-                path = parsed.path
-        elif args:
-            sid = args[0]
-            if len(args) > 1:
-                path = "/" + "/".join(args[1:])
-
-        if forwarded_query and path != 'base_url':
-            path = f"{path}?{urlencode(forwarded_query)}"
+        sid, path = parse_mitm_target(self.path, self.headers)
 
         if not sid:
             self.send_response(404)
+            self.send_header("Content-type", "text/plain; charset=utf-8")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.send_header("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
+            self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With")
             self.end_headers()
+            self.wfile.write(b"Missing SID")
             return
         
         # no devolver el script del websocket para no crear nuevas conexiones
@@ -255,6 +309,7 @@ class MITMHTTPRequestHandler(BaseHTTPRequestHandler):
         print(f"MITM Request for SID {sid}: {path}")
         response = {}
         cacheKey = str(datetime.datetime.now())
+        resolved_sid = sid
         
         # Construye el objeto de la request
         request = {
@@ -263,9 +318,13 @@ class MITMHTTPRequestHandler(BaseHTTPRequestHandler):
             "url": path,
             "key": cacheKey
         }
+
+        content_type = self.headers.get("Content-Type")
+        if content_type:
+            request["contentType"] = content_type
         
         # Si es POST incluye el body
-        if method == 'POST':
+        if method in {'POST', 'PUT', 'PATCH', 'DELETE'}:
             content_length = int(self.headers.get("Content-Length", "0") or "0")
             request['body'] = self.rfile.read(content_length).decode("utf-8")
         try:
@@ -288,25 +347,32 @@ class MITMHTTPRequestHandler(BaseHTTPRequestHandler):
             response["content"] = f'{method} Request error for SID {sid}: {e}'
             self.send_response(404)
             self.send_header("Content-type", "text/plain; charset=utf-8")
-        self.send_header("Access-Control-Allow-Origin", "*")
-        self.end_headers()
-        # Rewrite links to keep the SID in the path
-        content = response["content"]
-        if isinstance(content, str):
-            active_sid = resolved_sid if 'resolved_sid' in locals() else sid
-            is_html_document = 'html' in str(response.get('type', '')).lower() or bool(re.search(r'(?i)<(?:!doctype\s+html|html|head|body)\b', content))
-            is_css_document = 'css' in str(response.get('type', '')).lower() or bool(re.search(r'(?i)@import|url\(|--[a-z0-9_-]+\s*:', content))
-            if is_html_document:
-                content = rewrite_html_for_mitm(content, active_sid)
-            elif is_css_document:
-                content = rewrite_css_for_mitm(content, active_sid)
-            else:
-                content = content.replace('href="/', f'href="/{active_sid}/')
-            self.wfile.write(content.encode("utf-8"))
-        elif isinstance(content, bytes):
-            # For binary content, we don't rewrite
-            self.wfile.write(content)
-        cache.pop(cacheKey, None)
+        try:
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.send_header("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
+            self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With")
+            self.end_headers()
+            # Rewrite links to keep the SID in the path
+            content = response["content"]
+            if isinstance(content, str):
+                active_sid = resolved_sid
+                is_html_document = 'html' in str(response.get('type', '')).lower() or bool(re.search(r'(?i)<(?:!doctype\s+html|html|head|body)\b', content))
+                is_css_document = 'css' in str(response.get('type', '')).lower() or bool(re.search(r'(?i)@import|url\(|--[a-z0-9_-]+\s*:', content))
+                if is_html_document:
+                    content = rewrite_html_for_mitm(content, active_sid)
+                elif is_css_document:
+                    content = rewrite_css_for_mitm(content, active_sid)
+                else:
+                    content = content.replace('href="/', f'href="/{active_sid}/')
+                self.wfile.write(content.encode("utf-8"))
+            elif isinstance(content, bytes):
+                # For binary content, we don't rewrite
+                self.wfile.write(content)
+        except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError):
+            # Browser navigated away/cancelled request while MITM was streaming.
+            pass
+        finally:
+            cache.pop(cacheKey, None)
 
     def log_message(self, format: str, *args) -> None:
         return ""

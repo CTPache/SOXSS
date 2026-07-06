@@ -11,7 +11,6 @@ const dom = {
     displayNameInput: document.getElementById('displayNameInput'),
     bioInput: document.getElementById('bioInput'),
     displayNameField: document.getElementById('displayNameField'),
-    rememberInput: document.getElementById('rememberInput'),
     authFeedback: document.getElementById('authFeedback'),
     authSubmitButton: document.getElementById('authSubmitButton'),
     registerModeButton: document.getElementById('registerModeButton'),
@@ -63,7 +62,6 @@ async function handleAuthSubmit(event) {
     const payload = {
         username: dom.usernameInput.value.trim(),
         password: dom.passwordInput.value,
-        remember: dom.rememberInput.checked,
     };
 
     if (state.mode === 'register') {
@@ -79,7 +77,6 @@ async function handleAuthSubmit(event) {
         });
         const username = result.user?.username || payload.username;
         dom.authForm.reset();
-        dom.rememberInput.checked = true;
         setMode('login');
         setFeedback(dom.authFeedback, `Sesión iniciada como @${username}. Redirigiendo al feed...`, false);
         setTimeout(() => {
@@ -99,7 +96,6 @@ function wireEvents() {
 async function main() {
     wireEvents();
     setMode('login');
-    dom.rememberInput.checked = true;
 }
 
 main().catch((error) => {

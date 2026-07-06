@@ -64,7 +64,6 @@ async function selectClient(index) {
     await sendConsole("change " + index);
 
     if (!initializedClients[currentClientSid]) {
-        await loadDefaultScripts();
         initializedClients[currentClientSid] = true;
     }
 

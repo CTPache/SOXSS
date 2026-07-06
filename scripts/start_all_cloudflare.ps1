@@ -36,10 +36,177 @@ function Test-TwisterHealth {
     }
 }
 
-$pythonExe = Join-Path $RepoRoot ".venv\Scripts\python.exe"
-if (-not (Test-Path -Path $pythonExe)) {
-    throw "Python virtual environment not found at: $pythonExe"
+function Resolve-HostPythonExecutable {
+    # Prefer the Windows 'py' launcher: it always resolves to a real CPython that
+    # produces a standard Scripts\ venv layout. A bare 'python.exe' on PATH may be a
+    # bundled MinGW build (e.g. Inkscape's) that creates an unusable Unix-style venv.
+    $pyCmd = Get-Command py -ErrorAction SilentlyContinue
+    if ($pyCmd) {
+        try {
+            $resolved = (& $pyCmd.Source -3 -c "import sys; print(sys.executable)" 2>$null | Select-Object -First 1)
+            if ($resolved) { $resolved = $resolved.Trim() }
+            if ($resolved -and (Test-Path -Path $resolved)) {
+                return $resolved
+            }
+        }
+        catch {
+            # Fall through to the plain interpreters below.
+        }
+    }
+
+    $pythonCmd = Get-Command python -ErrorAction SilentlyContinue
+    if ($pythonCmd) {
+        return $pythonCmd.Source
+    }
+
+    $python3Cmd = Get-Command python3 -ErrorAction SilentlyContinue
+    if ($python3Cmd) {
+        return $python3Cmd.Source
+    }
+
+    throw "Python 3 interpreter not found on PATH. Install Python and ensure 'py' or 'python' is available."
 }
+
+function Get-VenvPythonExecutable {
+    param(
+        [string]$VenvRoot
+    )
+
+    $candidates = @(
+        (Join-Path $VenvRoot "Scripts\python.exe"),
+        (Join-Path $VenvRoot "bin\python"),
+        (Join-Path $VenvRoot "bin\python3")
+    )
+
+    foreach ($candidate in $candidates) {
+        if (Test-Path -Path $candidate) {
+            return $candidate
+        }
+    }
+
+    return $null
+}
+
+function Ensure-VirtualEnvironment {
+    param(
+        [string]$VenvPath,
+        [string]$HostPython
+    )
+
+    if (Test-Path -Path $VenvPath) {
+        if (Get-VenvPythonExecutable -VenvRoot $VenvPath) {
+            return
+        }
+        Write-Step "Existing virtual environment at $VenvPath is invalid or incompatible; recreating it"
+        Remove-Item -Path $VenvPath -Recurse -Force
+    }
+
+    Write-Step "Creating Python virtual environment at $VenvPath using $HostPython"
+    & $HostPython -m venv $VenvPath
+    if ($LASTEXITCODE -ne 0) {
+        throw "Failed to create virtual environment using $HostPython."
+    }
+}
+
+function Test-RequirementsSatisfied {
+    param(
+        [string]$PythonExe,
+        [string]$RequirementsFile
+    )
+
+    # Ask pip to resolve the requirements in dry-run/report mode without touching
+    # the environment. If every requirement is already satisfied there is nothing
+    # left to install and we can skip the (slow, network-bound) install step.
+    $output = & $PythonExe -m pip install --dry-run --no-deps -r $RequirementsFile 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        # Could not determine state (e.g. offline); fall back to attempting install.
+        return $false
+    }
+
+    # pip prints "Would install <pkg> ..." for anything missing; absence means satisfied.
+    if ($output -match 'Would install') {
+        return $false
+    }
+
+    return $true
+}
+
+function Install-Requirements {
+    param(
+        [string]$PythonExe,
+        [string]$RequirementsFile
+    )
+
+    if (-not (Test-Path -Path $RequirementsFile)) {
+        Write-Step "requirements.txt not found at $RequirementsFile; skipping dependency installation."
+        return
+    }
+
+    if (Test-RequirementsSatisfied -PythonExe $PythonExe -RequirementsFile $RequirementsFile) {
+        Write-Step "All Python dependencies already satisfied."
+        return
+    }
+
+    Write-Step "Installing dependencies from requirements.txt"
+    & $PythonExe -m pip install --upgrade pip
+    if ($LASTEXITCODE -ne 0) {
+        throw "Failed to upgrade pip inside virtual environment."
+    }
+
+    & $PythonExe -m pip install -r $RequirementsFile
+    if ($LASTEXITCODE -ne 0) {
+        throw "Failed to install Python dependencies from requirements.txt."
+    }
+}
+
+function Ensure-Cloudflared {
+    $cmd = Get-Command "cloudflared" -ErrorAction SilentlyContinue
+    if ($cmd -and $cmd.Source) {
+        return
+    }
+
+    $wingetRoot = Join-Path $env:LOCALAPPDATA "Microsoft\WinGet\Packages"
+    if (Test-Path -Path $wingetRoot) {
+        $existing = Get-ChildItem -Path $wingetRoot -Filter "cloudflared.exe" -Recurse -ErrorAction SilentlyContinue |
+            Select-Object -First 1
+        if ($existing) {
+            return
+        }
+    }
+
+    $winget = Get-Command "winget" -ErrorAction SilentlyContinue
+    if (-not $winget) {
+        throw @"
+cloudflared executable not found and winget is unavailable to install it.
+
+Install Cloudflare Tunnel manually, then rerun:
+  winget install --id Cloudflare.cloudflared -e
+"@
+    }
+
+    Write-Step "cloudflared not found; installing via winget (Cloudflare.cloudflared)"
+    & $winget.Source install --id Cloudflare.cloudflared -e --accept-source-agreements --accept-package-agreements
+    if ($LASTEXITCODE -ne 0) {
+        throw "Failed to install cloudflared via winget (exit code $LASTEXITCODE)."
+    }
+}
+
+$venvRoot = Join-Path $RepoRoot ".venv"
+$pythonExe = Get-VenvPythonExecutable -VenvRoot $venvRoot
+if (-not $pythonExe) {
+    $hostPython = Resolve-HostPythonExecutable
+    Ensure-VirtualEnvironment -VenvPath $venvRoot -HostPython $hostPython
+    $pythonExe = Get-VenvPythonExecutable -VenvRoot $venvRoot
+    if (-not $pythonExe) {
+        throw "Failed to create or locate the virtual environment python executable at: $venvRoot"
+    }
+}
+
+# Always ensure dependencies are present, even when reusing an existing venv.
+Install-Requirements -PythonExe $pythonExe -RequirementsFile (Join-Path $RepoRoot "requirements.txt")
+
+# Make sure the Cloudflare tunnel binary the deploy step needs is available.
+Ensure-Cloudflared
 
 $twisterScript = Join-Path $RepoRoot "twister\server.py"
 if (-not (Test-Path -Path $twisterScript)) {

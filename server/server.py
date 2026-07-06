@@ -78,6 +78,8 @@ async def handle_static(request):
         ws_base = _build_public_base_url(ws_scheme, config.PUBLIC_WS_HOST, ws_port)
         hport = '' if http_port in (None, '', 0, '0') else str(http_port)
         wport = '' if ws_port in (None, '', 0, '0') else str(ws_port)
+        mitm_host = _clean_public_host(getattr(config, 'MITM_HOST', ''))
+        mitm_port = str(getattr(config, 'MITM_PORT', '') or '').strip()
         with open(file_path, 'r', encoding='utf-8') as f:
             content = f.read()
         content = (
@@ -90,6 +92,8 @@ async def handle_static(request):
                    .replace("$whost", config.PUBLIC_WS_HOST)
                    .replace("$wport", wport)
                    .replace("$hport", hport)
+                   .replace("$mhost", mitm_host)
+                   .replace("$mport", mitm_port)
         )
         return web.Response(text=content, content_type='application/javascript', headers={"Access-Control-Allow-Origin": "*"})
     # Serve other static files

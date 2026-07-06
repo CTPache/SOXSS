@@ -137,7 +137,7 @@ async def exec(websocket):
             except Exception as e:
                 print(f"Message processing error from {remote_ip} (SID: {sid}): {e}")
     except exceptions.ConnectionClosed:
-        print(f"Closed by client {remote_ip}")
+        print(f"Closed by client {remote_ip} (SID: {sid})")
     finally:
         if websocket in socksUtil.sockets:
             if socksUtil.sockets.index(websocket) == socksUtil.current:

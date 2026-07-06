@@ -367,8 +367,7 @@ async def set_session_cookies(response, user, token, remember):
         path='/',
         max_age=token_max_age(remember),
         samesite='Lax',
-        # Intentionally insecure in the demo app so XSS session hijack can be demonstrated.
-        httponly=False,
+        httponly=True,
     )
 
 

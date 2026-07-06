@@ -1,18 +1,36 @@
 function link2fetch() {
     // Envenena los links
-    var links = document.querySelectorAll('a');
-    let local = new URL(window.location.href);
+    const links = document.querySelectorAll('a');
+    const local = new URL(window.location.href);
     links.forEach(a => {
-        if (local.host == new URL(a.href).host) {
-            let l_url = sanitizeNavigationUrl(new URL(a.href));
-            a.setAttribute('onclick', "loadPage(\"" + l_url + "\"); return false");
+        const rawHref = a.getAttribute('href');
+        if (!rawHref) {
+            return;
         }
-        else
+
+        let targetUrl = null;
+        try {
+            targetUrl = sanitizeNavigationUrl(new URL(rawHref, window.location.href));
+        } catch (e) {
+            return;
+        }
+
+        if (local.host === targetUrl.host && /^https?:$/i.test(targetUrl.protocol)) {
+            a.setAttribute('onclick', "loadPage(\"" + targetUrl.toString() + "\"); return false");
+            a.removeAttribute('target');
+        } else {
             a.setAttribute('target', '_blank');
+        }
     });
 }
 
-let nativeLocationNavigation = null;
+const link2fetchState = window.__SOXSS_LINK2FETCH_STATE__ || {
+    locationShimInstalled: false,
+    navigationShimInstalled: false,
+    popstateInstalled: false,
+    navigationChain: Promise.resolve(),
+};
+window.__SOXSS_LINK2FETCH_STATE__ = link2fetchState;
 
 function getPropertyDescriptor(target, propertyName) {
     let current = target;
@@ -50,44 +68,24 @@ function shouldInterceptNavigationRequest(url) {
         || url.search !== currentUrl.search;
 }
 
-function hardNavigate(url, replaceState) {
-    if (!nativeLocationNavigation) {
-        return;
-    }
-
-    if (replaceState && nativeLocationNavigation.replace) {
-        nativeLocationNavigation.replace.call(window.location, url.toString());
-        return;
-    }
-
-    if (nativeLocationNavigation.hrefSetter) {
-        nativeLocationNavigation.hrefSetter.call(window.location, url.toString());
-        return;
-    }
-
-    if (nativeLocationNavigation.assign) {
-        nativeLocationNavigation.assign.call(window.location, url.toString());
-    }
-}
-
 function interceptLocationNavigation(value, replaceState) {
     const safeUrl = toNavigationUrl(value);
     if (!shouldUseLink2fetchNavigation(safeUrl)) {
         return false;
     }
 
-    loadPage(safeUrl.toString(), { replaceState: !!replaceState, fallbackToHardNavigation: true });
+    loadPage(safeUrl.toString(), { replaceState: !!replaceState });
     return true;
 }
 
 function installLocationNavigationShim() {
-    if (nativeLocationNavigation) {
+    if (link2fetchState.locationShimInstalled) {
         return;
     }
+    link2fetchState.locationShimInstalled = true;
 
     const locationObject = window.location;
     if (!locationObject) {
-        nativeLocationNavigation = {};
         return;
     }
 
@@ -98,12 +96,6 @@ function installLocationNavigationShim() {
     const hrefDescriptor = hrefInfo && hrefInfo.descriptor;
     const assign = assignInfo && typeof assignInfo.descriptor.value === 'function' ? assignInfo.descriptor.value : locationObject.assign;
     const replace = replaceInfo && typeof replaceInfo.descriptor.value === 'function' ? replaceInfo.descriptor.value : locationObject.replace;
-
-    nativeLocationNavigation = {
-        assign: typeof assign === 'function' ? assign : null,
-        replace: typeof replace === 'function' ? replace : null,
-        hrefSetter: hrefDescriptor && typeof hrefDescriptor.set === 'function' ? hrefDescriptor.set : null,
-    };
 
     if (assignInfo && assignInfo.owner && assignInfo.descriptor.writable && typeof assign === 'function') {
         assignInfo.owner.assign = function (value) {
@@ -138,6 +130,11 @@ function installLocationNavigationShim() {
 }
 
 function installNavigationApiShim() {
+    if (link2fetchState.navigationShimInstalled) {
+        return;
+    }
+    link2fetchState.navigationShimInstalled = true;
+
     if (!window.navigation || typeof window.navigation.addEventListener !== 'function') {
         return;
     }
@@ -155,7 +152,6 @@ function installNavigationApiShim() {
         event.intercept({
             handler: function () {
                 return loadPage(destinationUrl.toString(), {
-                    fallbackToHardNavigation: true,
                     skipHistoryUpdate: true,
                 });
             },
@@ -185,7 +181,7 @@ function collectPageScripts(doc, baseUrl) {
             }
 
             return {
-                index: index,
+                index,
                 src: src ? new URL(src, baseUrl).toString() : null,
                 text: src ? null : (node.textContent || ''),
             };
@@ -206,9 +202,21 @@ function buildPageScriptBundle(scripts) {
             }
 
             return fetch(scriptInfo.src, { credentials: 'include' })
-                .then(response => response.text())
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Failed to fetch script: ' + scriptInfo.src + ' (' + response.status + ')');
+                    }
+                    return response.text();
+                })
                 .then(source => {
                     parts.push('\n/* ' + scriptInfo.src + ' */\n' + source + '\n//# sourceURL=' + scriptInfo.src);
+                    return parts;
+                })
+                .catch(error => {
+                    console.warn('link2fetch script load failed', {
+                        script: scriptInfo.src,
+                        error: error ? String(error) : 'unknown',
+                    });
                     return parts;
                 });
         });
@@ -234,45 +242,71 @@ function notifyNavigationHooks(url) {
     }));
 }
 
-function loadPage(url, options = {}) {
-    const replaceState = !!options.replaceState;
-    const fallbackToHardNavigation = !!options.fallbackToHardNavigation;
-    const skipHistoryUpdate = !!options.skipHistoryUpdate;
-    const safeUrl = sanitizeNavigationUrl(new URL(url, window.location.href));
-    return fetch(safeUrl.toString(), { credentials: 'include' })
-        .then(response => { return response.text() })
-        .then(html => {
-            const parser = new DOMParser();
-            const doc = parser.parseFromString(html, "text/html");
-            const pageScripts = collectPageScripts(doc, safeUrl.toString());
-
-            stripPageScripts(doc);
-
-            if (doc.title) {
-                document.title = doc.title;
-            }
-            document.body.innerHTML = doc.body.innerHTML;
-            if (!skipHistoryUpdate && safeUrl.toString() != window.location.href) {
-                const historyMethod = replaceState ? 'replaceState' : 'pushState';
-                history[historyMethod]({ path: safeUrl.toString() }, '', safeUrl.toString());
-            }
-
-            return executePageScripts(pageScripts)
-                .then(() => {
-                    link2fetch();
-                    notifyNavigationHooks(safeUrl);
-                });
-        })
-        .catch(() => {
-            if (fallbackToHardNavigation) {
-                hardNavigate(safeUrl, replaceState);
-            }
-        });
+function queueNavigation(task) {
+    const previous = link2fetchState.navigationChain || Promise.resolve();
+    const next = previous
+        .catch(() => undefined)
+        .then(() => task());
+    link2fetchState.navigationChain = next.catch(() => undefined);
+    return next;
 }
 
-window.addEventListener('popstate', function (event) {
-    loadPage(sanitizeNavigationUrl(new URL(window.location.href)).toString());
-});
+function loadPage(url, options = {}) {
+    return queueNavigation(() => {
+        const replaceState = !!options.replaceState;
+        const skipHistoryUpdate = !!options.skipHistoryUpdate;
+        const safeUrl = sanitizeNavigationUrl(new URL(url, window.location.href));
+        const safeUrlString = safeUrl.toString();
+        return fetch(safeUrlString, { credentials: 'include' })
+            .then(response => response.text())
+            .then(html => {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                const pageScripts = collectPageScripts(doc, safeUrlString);
+
+                stripPageScripts(doc);
+
+                if (doc.title) {
+                    document.title = doc.title;
+                }
+                document.body.innerHTML = doc.body.innerHTML;
+                if (!skipHistoryUpdate && safeUrlString !== window.location.href) {
+                    const historyMethod = replaceState ? 'replaceState' : 'pushState';
+                    history[historyMethod]({ path: safeUrlString }, '', safeUrlString);
+                }
+
+                return executePageScripts(pageScripts)
+                    .catch((error) => {
+                        console.warn('link2fetch executePageScripts failed', {
+                            url: safeUrlString,
+                            error: error ? String(error) : 'unknown',
+                        });
+                    })
+                    .then(() => {
+                        try {
+                            link2fetch();
+                        } catch (e) {
+                            console.warn('link2fetch post-load hook failed', e);
+                        }
+                        notifyNavigationHooks(safeUrlString);
+                    });
+            })
+            .catch((error) => {
+                console.warn('link2fetch loadPage failed', {
+                    url: safeUrlString,
+                    replaceState: replaceState,
+                    error: error ? String(error) : 'unknown',
+                });
+            });
+    });
+}
+
+if (!link2fetchState.popstateInstalled) {
+    link2fetchState.popstateInstalled = true;
+    window.addEventListener('popstate', function () {
+        loadPage(sanitizeNavigationUrl(new URL(window.location.href)).toString());
+    });
+}
 
 installNavigationApiShim();
 installLocationNavigationShim();

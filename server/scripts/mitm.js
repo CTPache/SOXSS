@@ -6,6 +6,11 @@ _webs_Commands_['mitm'] = function (mes) {
     
     let msg = { key: mes.key, url: mes.url, content: '<p>Not found</p>', contentType: 'text/html', method: mes.method ? mes.method : 'GET' }
     let toRequest = { method: msg['method'] }
+    if (mes.contentType) {
+        toRequest.headers = {
+            'Content-Type': mes.contentType,
+        };
+    }
     if (!(toRequest.method == 'GET'))
         toRequest.body = 'body' in mes ? mes.body : ''
     fetch(mes.url, toRequest).then(

@@ -81,6 +81,26 @@ function Parse-PublicUrl {
     }
 }
 
+function Get-VenvPythonExecutable {
+    param(
+        [string]$VenvRoot
+    )
+
+    $candidates = @(
+        (Join-Path $VenvRoot "Scripts\python.exe"),
+        (Join-Path $VenvRoot "bin\python"),
+        (Join-Path $VenvRoot "bin\python3")
+    )
+
+    foreach ($candidate in $candidates) {
+        if (Test-Path -Path $candidate) {
+            return $candidate
+        }
+    }
+
+    return $null
+}
+
 function Start-QuickTunnel {
     param(
         [string]$Name,
@@ -193,9 +213,9 @@ if ($NoRun) {
     exit 0
 }
 
-$pythonExe = Join-Path $RepoRoot ".venv\Scripts\python.exe"
-if (-not (Test-Path -Path $pythonExe)) {
-    throw "Python virtual environment not found at: $pythonExe"
+$pythonExe = Get-VenvPythonExecutable -VenvRoot (Join-Path $RepoRoot ".venv")
+if (-not $pythonExe) {
+    throw "Python virtual environment not found at: .venv"
 }
 
 $soxssArgs = @("Socxss.py")

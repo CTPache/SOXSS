@@ -87,7 +87,7 @@ function Get-VenvPythonExecutable {
     return $null
 }
 
-function Ensure-VirtualEnvironment {
+function Initialize-VirtualEnvironment {
     param(
         [string]$VenvPath,
         [string]$HostPython
@@ -159,7 +159,7 @@ function Install-Requirements {
     }
 }
 
-function Ensure-Cloudflared {
+function Initialize-Cloudflared {
     $cmd = Get-Command "cloudflared" -ErrorAction SilentlyContinue
     if ($cmd -and $cmd.Source) {
         return
@@ -195,7 +195,7 @@ $venvRoot = Join-Path $RepoRoot ".venv"
 $pythonExe = Get-VenvPythonExecutable -VenvRoot $venvRoot
 if (-not $pythonExe) {
     $hostPython = Resolve-HostPythonExecutable
-    Ensure-VirtualEnvironment -VenvPath $venvRoot -HostPython $hostPython
+    Initialize-VirtualEnvironment -VenvPath $venvRoot -HostPython $hostPython
     $pythonExe = Get-VenvPythonExecutable -VenvRoot $venvRoot
     if (-not $pythonExe) {
         throw "Failed to create or locate the virtual environment python executable at: $venvRoot"
@@ -206,7 +206,7 @@ if (-not $pythonExe) {
 Install-Requirements -PythonExe $pythonExe -RequirementsFile (Join-Path $RepoRoot "requirements.txt")
 
 # Make sure the Cloudflare tunnel binary the deploy step needs is available.
-Ensure-Cloudflared
+Initialize-Cloudflared
 
 $twisterScript = Join-Path $RepoRoot "twister\server.py"
 if (-not (Test-Path -Path $twisterScript)) {

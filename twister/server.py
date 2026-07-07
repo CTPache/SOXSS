@@ -517,6 +517,48 @@ async def handle_update_me(request):
     return response
 
 
+async def handle_change_password(request):
+    session = await get_active_session(request)
+    if not session:
+        return web.json_response({'error': 'Not authenticated'}, status=401)
+
+    try:
+        payload = await request.json()
+    except Exception:
+        return web.json_response({'error': 'Invalid JSON body'}, status=400)
+
+    current_password = str(payload.get('currentPassword', '')).strip()
+    new_password = str(payload.get('newPassword', '')).strip()
+    confirm_password = str(payload.get('confirmPassword', '')).strip()
+
+    if not current_password or not new_password or not confirm_password:
+        return web.json_response({'error': 'All password fields are required'}, status=400)
+    if new_password != confirm_password:
+        return web.json_response({'error': 'New password confirmation does not match'}, status=400)
+    if len(new_password) < 6:
+        return web.json_response({'error': 'New password must be at least 6 characters'}, status=400)
+    if current_password == new_password:
+        return web.json_response({'error': 'New password must be different from current password'}, status=400)
+
+    state = await read_state()
+    users = state['users']
+    username = str(session.get('user', '')).lower()
+    user = next((item for item in users if item['username'].lower() == username), None)
+    if not user:
+        return web.json_response({'error': 'User not found'}, status=404)
+    if user.get('password', '') != current_password:
+        return web.json_response({'error': 'Current password is incorrect'}, status=401)
+
+    user['password'] = new_password
+    await write_state(users=users)
+
+    refreshed_session = await issue_session(user, bool(session.get('remember', False)), {'action': 'password-change'})
+    response = web.json_response({'ok': True, 'session': refreshed_session})
+    await set_session_cookies(response, user['username'], refreshed_session['token'], bool(refreshed_session.get('remember', False)))
+    response.headers['X-Session-Token'] = refreshed_session['token']
+    return response
+
+
 async def handle_users(request):
     state = await read_state()
     users = state['users']
@@ -658,6 +700,7 @@ def setup_routes(app):
     app.router.add_get('/api/session', handle_session)
     app.router.add_get('/api/me', handle_me)
     app.router.add_put('/api/me', handle_update_me)
+    app.router.add_put('/api/me/password', handle_change_password)
     app.router.add_get('/api/users', handle_users)
     app.router.add_get('/api/users/{username}', handle_user_detail)
     app.router.add_get('/api/users/{username}/posts', handle_user_posts)

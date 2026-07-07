@@ -275,10 +275,77 @@ class TestTwisterServerRoutes(TwisterServerAppMixin, unittest.IsolatedAsyncioTes
         update_resp, _ = await self._request_json("PUT", "/api/me", json={"displayName": "x"})
         self.assertEqual(update_resp.status, 401)
 
+        change_password_resp, _ = await self._request_json(
+            "PUT", "/api/me/password", json={"currentPassword": "a", "newPassword": "b", "confirmPassword": "b"}
+        )
+        self.assertEqual(change_password_resp.status, 401)
+
     async def test_update_me_invalid_json_after_login(self):
         await self._request_json("POST", "/api/auth/login", json={"username": "alice", "password": "alice123"})
         resp, _ = await self._request_json("PUT", "/api/me", data="not-json")
         self.assertEqual(resp.status, 400)
+
+    async def test_change_password_flow_and_login_with_new_password(self):
+        await self._request_json("POST", "/api/auth/login", json={"username": "alice", "password": "alice123"})
+
+        change_resp, change_payload = await self._request_json(
+            "PUT",
+            "/api/me/password",
+            json={
+                "currentPassword": "alice123",
+                "newPassword": "alice456",
+                "confirmPassword": "alice456",
+            },
+        )
+        self.assertEqual(change_resp.status, 200)
+        self.assertTrue(change_payload["ok"])
+
+        await self._request_json("POST", "/api/auth/logout", json={})
+
+        old_login_resp, _ = await self._request_json(
+            "POST", "/api/auth/login", json={"username": "alice", "password": "alice123"}
+        )
+        self.assertEqual(old_login_resp.status, 401)
+
+        new_login_resp, new_login_payload = await self._request_json(
+            "POST", "/api/auth/login", json={"username": "alice", "password": "alice456"}
+        )
+        self.assertEqual(new_login_resp.status, 200)
+        self.assertEqual(new_login_payload["user"]["username"], "alice")
+
+    async def test_change_password_validations(self):
+        await self._request_json("POST", "/api/auth/login", json={"username": "alice", "password": "alice123"})
+
+        invalid_json_resp, _ = await self._request_json("PUT", "/api/me/password", data="not-json")
+        self.assertEqual(invalid_json_resp.status, 400)
+
+        missing_fields_resp, _ = await self._request_json(
+            "PUT",
+            "/api/me/password",
+            json={"currentPassword": "", "newPassword": "", "confirmPassword": ""},
+        )
+        self.assertEqual(missing_fields_resp.status, 400)
+
+        mismatch_resp, _ = await self._request_json(
+            "PUT",
+            "/api/me/password",
+            json={"currentPassword": "alice123", "newPassword": "alice456", "confirmPassword": "alice789"},
+        )
+        self.assertEqual(mismatch_resp.status, 400)
+
+        short_resp, _ = await self._request_json(
+            "PUT",
+            "/api/me/password",
+            json={"currentPassword": "alice123", "newPassword": "123", "confirmPassword": "123"},
+        )
+        self.assertEqual(short_resp.status, 400)
+
+        wrong_current_resp, _ = await self._request_json(
+            "PUT",
+            "/api/me/password",
+            json={"currentPassword": "bad", "newPassword": "alice456", "confirmPassword": "alice456"},
+        )
+        self.assertEqual(wrong_current_resp.status, 401)
 
     async def test_posts_post_requires_auth_then_validates_content(self):
         unauth, _ = await self._request_json("POST", "/api/posts", json={"content": "hi"})

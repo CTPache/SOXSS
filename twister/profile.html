@@ -77,6 +77,22 @@
                 <button class="button button-primary" type="submit">Guardar cambios</button>
                 <p class="feedback" id="editFeedback"></p>
             </form>
+            <form id="passwordForm" class="form-grid">
+                <label>
+                    Contraseña actual
+                    <input id="currentPassword" type="password" maxlength="128" autocomplete="current-password" placeholder="Tu contraseña actual">
+                </label>
+                <label>
+                    Nueva contraseña
+                    <input id="newPassword" type="password" maxlength="128" autocomplete="new-password" placeholder="Mínimo 6 caracteres">
+                </label>
+                <label>
+                    Confirmar nueva contraseña
+                    <input id="confirmPassword" type="password" maxlength="128" autocomplete="new-password" placeholder="Repite la nueva contraseña">
+                </label>
+                <button class="button button-primary" type="submit">Cambiar contraseña</button>
+                <p class="feedback" id="passwordFeedback"></p>
+            </form>
         </section>
 
         <section class="card" id="postsCard">

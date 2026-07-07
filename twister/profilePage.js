@@ -23,6 +23,11 @@ const dom = {
     editBio: document.getElementById('editBio'),
     editAvatarColor: document.getElementById('editAvatarColor'),
     editFeedback: document.getElementById('editFeedback'),
+    passwordForm: document.getElementById('passwordForm'),
+    currentPassword: document.getElementById('currentPassword'),
+    newPassword: document.getElementById('newPassword'),
+    confirmPassword: document.getElementById('confirmPassword'),
+    passwordFeedback: document.getElementById('passwordFeedback'),
     userPostsList: document.getElementById('userPostsList'),
     postTemplate: document.getElementById('postTemplate'),
     headerLogoutButton: document.getElementById('headerLogoutButton'),
@@ -212,8 +217,53 @@ async function handleEditSubmit(event) {
     }
 }
 
+async function handlePasswordSubmit(event) {
+    event.preventDefault();
+    if (!state.isOwnProfile) {
+        setFeedback(dom.passwordFeedback, 'No tienes permisos para cambiar esta contraseña.', true);
+        return;
+    }
+
+    const currentPassword = dom.currentPassword.value.trim();
+    const newPassword = dom.newPassword.value.trim();
+    const confirmPassword = dom.confirmPassword.value.trim();
+
+    if (!currentPassword || !newPassword || !confirmPassword) {
+        setFeedback(dom.passwordFeedback, 'Completa todos los campos de contraseña.', true);
+        return;
+    }
+    if (newPassword.length < 6) {
+        setFeedback(dom.passwordFeedback, 'La nueva contraseña debe tener al menos 6 caracteres.', true);
+        return;
+    }
+    if (newPassword !== confirmPassword) {
+        setFeedback(dom.passwordFeedback, 'La confirmación no coincide con la nueva contraseña.', true);
+        return;
+    }
+
+    setFeedback(dom.passwordFeedback, 'Actualizando contraseña...', false);
+    try {
+        const updated = await apiFetch('/api/me/password', {
+            method: 'PUT',
+            body: JSON.stringify({
+                currentPassword,
+                newPassword,
+                confirmPassword,
+            }),
+        });
+        if (updated.session) {
+            state.session = updated.session;
+        }
+        dom.passwordForm.reset();
+        setFeedback(dom.passwordFeedback, 'Contraseña actualizada correctamente.', false);
+    } catch (error) {
+        setFeedback(dom.passwordFeedback, error.message, true);
+    }
+}
+
 function wireEvents() {
     dom.editForm.addEventListener('submit', handleEditSubmit);
+    dom.passwordForm.addEventListener('submit', handlePasswordSubmit);
     dom.headerLogoutButton.addEventListener('click', handleLogout);
 }
 

@@ -72,6 +72,6 @@ async def start_async_console_server(consoleModule):
     await runner.setup()
     site = web.TCPSite(runner, config.CONSOLE_HOST, config.CONSOLE_PORT)
     await site.start()
-    print(f"Console server running at http://{config.CONSOLE_HOST}:{config.CONSOLE_PORT}/")
+    print(f"Console server running at http://{config.CONSOLE_HOST}:{config.CONSOLE_PORT}/index.html")
     while True:
         await asyncio.sleep(3600)

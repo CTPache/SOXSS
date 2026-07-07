@@ -340,6 +340,13 @@ class TestTwisterServerRoutes(TwisterServerAppMixin, unittest.IsolatedAsyncioTes
         )
         self.assertEqual(short_resp.status, 400)
 
+        same_password_resp, _ = await self._request_json(
+            "PUT",
+            "/api/me/password",
+            json={"currentPassword": "alice123", "newPassword": "alice123", "confirmPassword": "alice123"},
+        )
+        self.assertEqual(same_password_resp.status, 400)
+
         wrong_current_resp, _ = await self._request_json(
             "PUT",
             "/api/me/password",
@@ -397,6 +404,13 @@ class TestTwisterServerRoutes(TwisterServerAppMixin, unittest.IsolatedAsyncioTes
 
         update_resp, _ = await self._request_json("PUT", "/api/me", json={"displayName": "x"})
         self.assertEqual(update_resp.status, 404)
+
+        change_password_resp, _ = await self._request_json(
+            "PUT",
+            "/api/me/password",
+            json={"currentPassword": "a", "newPassword": "abcdef", "confirmPassword": "abcdef"},
+        )
+        self.assertEqual(change_password_resp.status, 404)
 
     async def test_handle_posts_rejects_unsupported_method(self):
         response = await self.server.handle_posts(SimpleNamespace(method="DELETE"))

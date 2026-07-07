@@ -16,6 +16,9 @@ import server.server as payload_server
 import socksUtil
 
 
+VALID_SID = "a" * 32
+
+
 class DummyRequest:
     def __init__(self, body):
         self._body = body
@@ -281,7 +284,7 @@ class TestMITMServer(unittest.IsolatedAsyncioTestCase):
 
     async def test_perform_request_forwards_and_rewrites_links(self):
         handler = object.__new__(mitm_server.MITMHTTPRequestHandler)
-        handler.path = "/sid-1/path/to/resource"
+        handler.path = f"/{VALID_SID}/path/to/resource"
         handler.headers = {}
         handler.rfile = io.BytesIO()
         handler.wfile = io.BytesIO()
@@ -305,12 +308,12 @@ class TestMITMServer(unittest.IsolatedAsyncioTestCase):
         handler.send_response.assert_called_once_with(200)
         handler.send_header.assert_any_call("Content-type", "text/html")
         handler.send_header.assert_any_call("Access-Control-Allow-Origin", "*")
-        self.assertEqual(handler.wfile.getvalue().decode("utf-8"), '<a href="/sid-1/next">next</a>')
+        self.assertEqual(handler.wfile.getvalue().decode("utf-8"), f'<a href="/{VALID_SID}/next">next</a>')
         self.assertNotIn("fixed-key", mitm_server.cache)
 
     async def test_perform_request_returns_404_without_socket(self):
         handler = object.__new__(mitm_server.MITMHTTPRequestHandler)
-        handler.path = "/missing-sid/page"
+        handler.path = "/page?__soxss_sid=missing-sid"
         handler.headers = {}
         handler.rfile = io.BytesIO()
         handler.wfile = io.BytesIO()
@@ -339,17 +342,23 @@ class TestMITMServer(unittest.IsolatedAsyncioTestCase):
     async def test_perform_request_returns_404_for_empty_path(self):
         handler = object.__new__(mitm_server.MITMHTTPRequestHandler)
         handler.path = "/"
+        handler.headers = {}
+        handler.rfile = io.BytesIO()
+        handler.wfile = io.BytesIO()
         handler.send_response = MagicMock()
+        handler.send_header = MagicMock()
         handler.end_headers = MagicMock()
 
         await mitm_server.MITMHTTPRequestHandler.performRequest(handler, "GET")
 
         handler.send_response.assert_called_once_with(404)
+        self.assertEqual(handler.wfile.getvalue().decode("utf-8"), "Missing SID")
         handler.end_headers.assert_called_once_with()
 
     async def test_perform_request_ignores_websocket_js(self):
         handler = object.__new__(mitm_server.MITMHTTPRequestHandler)
-        handler.path = "/sid-1/webSocket.js"
+        handler.path = "/webSocket.js?__soxss_sid=query-sid"
+        handler.headers = {}
         handler.send_response = MagicMock()
 
         await mitm_server.MITMHTTPRequestHandler.performRequest(handler, "GET")
@@ -358,8 +367,8 @@ class TestMITMServer(unittest.IsolatedAsyncioTestCase):
 
     async def test_perform_request_for_post_reads_body_and_writes_binary_content(self):
         handler = object.__new__(mitm_server.MITMHTTPRequestHandler)
-        handler.path = "/sid-1/upload"
-        handler.headers = {"Content-Length": "7"}
+        handler.path = f"/{VALID_SID}/upload"
+        handler.headers = {"Content-Length": "7", "Content-Type": "application/json"}
         handler.rfile = io.BytesIO(b"payload")
         handler.wfile = io.BytesIO()
         handler.send_response = MagicMock()
@@ -368,6 +377,7 @@ class TestMITMServer(unittest.IsolatedAsyncioTestCase):
 
         async def fake_send_message(socket, payload):
             self.assertIn('"body": "payload"', payload)
+            self.assertIn('"contentType": "application/json"', payload)
             mitm_server.cache["fixed-key"] = {
                 "type": "application/octet-stream",
                 "content": b"BIN",
@@ -386,7 +396,7 @@ class TestMITMServer(unittest.IsolatedAsyncioTestCase):
 
     async def test_perform_request_waits_until_cache_entry_exists(self):
         handler = object.__new__(mitm_server.MITMHTTPRequestHandler)
-        handler.path = "/sid-1/pending"
+        handler.path = f"/{VALID_SID}/pending"
         handler.headers = {}
         handler.rfile = io.BytesIO()
         handler.wfile = io.BytesIO()
@@ -415,7 +425,7 @@ class TestMITMServer(unittest.IsolatedAsyncioTestCase):
         sleep_mock.assert_awaited()
         self.assertEqual(handler.wfile.getvalue().decode("utf-8"), "done")
 
-    def test_do_get_and_do_post_delegate_to_asyncio_run(self):
+    def test_do_http_verbs_delegate_to_asyncio_run(self):
         handler = object.__new__(mitm_server.MITMHTTPRequestHandler)
 
         async def fake_perform_request(method):
@@ -429,8 +439,26 @@ class TestMITMServer(unittest.IsolatedAsyncioTestCase):
         with patch("modules.MITMServer.asyncio.run", side_effect=fake_run) as run_mock:
             handler.do_GET()
             handler.do_POST()
+            handler.do_PUT()
+            handler.do_PATCH()
+            handler.do_DELETE()
 
-        self.assertEqual(run_mock.call_count, 2)
+        self.assertEqual(run_mock.call_count, 5)
+
+    def test_do_options_returns_cors_headers(self):
+        handler = object.__new__(mitm_server.MITMHTTPRequestHandler)
+        handler.send_response = MagicMock()
+        handler.send_header = MagicMock()
+        handler.end_headers = MagicMock()
+
+        handler.do_OPTIONS()
+
+        handler.send_response.assert_called_once_with(200)
+        handler.send_header.assert_any_call("Access-Control-Allow-Origin", "*")
+        handler.send_header.assert_any_call("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
+        handler.send_header.assert_any_call("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With")
+        handler.send_header.assert_any_call("Access-Control-Max-Age", "86400")
+        handler.end_headers.assert_called_once_with()
 
     def test_log_message_returns_empty_string(self):
         handler = object.__new__(mitm_server.MITMHTTPRequestHandler)
@@ -486,6 +514,33 @@ class TestMITMRewriters(unittest.TestCase):
         self.assertEqual(mitm_server.rewrite_html_for_mitm("just plain text", "sid"), "just plain text")
 
 
+class TestMITMTargetParsing(unittest.TestCase):
+    def test_extract_sid_from_referer_prefers_query_param_then_path(self):
+        sid = "b" * 32
+        query_referer = f"https://example.test/feed?__soxss_sid={sid}&x=1"
+        path_referer = f"https://example.test/{sid}/profile"
+
+        self.assertEqual(mitm_server.extract_sid_from_referer(query_referer), sid)
+        self.assertEqual(mitm_server.extract_sid_from_referer(path_referer), sid)
+
+    def test_extract_sid_from_referer_handles_invalid_values(self):
+        with patch("modules.MITMServer.urlsplit", side_effect=ValueError("bad-url")):
+            self.assertEqual(mitm_server.extract_sid_from_referer("http://["), "")
+
+        self.assertEqual(mitm_server.extract_sid_from_referer(""), "")
+        self.assertEqual(mitm_server.extract_sid_from_referer("https://example.test/no-sid"), "")
+
+    def test_parse_mitm_target_uses_referer_sid_and_forwards_query(self):
+        sid = "c" * 32
+        parsed_sid, parsed_path = mitm_server.parse_mitm_target(
+            "/target/path?foo=bar",
+            {"Referer": f"https://example.test/page?__soxss_sid={sid}"},
+        )
+
+        self.assertEqual(parsed_sid, sid)
+        self.assertEqual(parsed_path, "/target/path?foo=bar")
+
+
 class TestResolveSocketForMITM(SocksUtilStateMixin, unittest.TestCase):
     def test_returns_direct_match(self):
         socket = SimpleNamespace(request=SimpleNamespace(path="/sid-1"))
@@ -533,7 +588,7 @@ class TestMITMPerformRequestBranches(unittest.IsolatedAsyncioTestCase):
         return handler
 
     async def test_uses_query_sid_and_forwards_remaining_query(self):
-        handler = self._make_handler("/page?__soxss_sid=sid-q&foo=bar")
+        handler = self._make_handler("/page?__soxss_sid=querysid&foo=bar")
         captured = {}
 
         async def fake_send_message(socket, payload):
@@ -550,7 +605,7 @@ class TestMITMPerformRequestBranches(unittest.IsolatedAsyncioTestCase):
         handler.send_response.assert_called_once_with(200)
 
     async def test_logs_sid_fallback_when_resolution_uses_fallback(self):
-        handler = self._make_handler("/stale/page")
+        handler = self._make_handler("/page?__soxss_sid=stale")
 
         async def fake_send_message(socket, payload):
             mitm_server.cache["fixed-key"] = {"type": "text/html", "content": "ok", "method": "GET"}
@@ -564,7 +619,7 @@ class TestMITMPerformRequestBranches(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(any("MITM SID fallback" in str(call.args[0]) for call in print_mock.call_args_list if call.args))
 
     async def test_times_out_when_response_never_arrives(self):
-        handler = self._make_handler("/sid-1/slow")
+        handler = self._make_handler(f"/{VALID_SID}/slow")
         times = iter([0.0, 100.0, 100.0])
         loop = SimpleNamespace(time=lambda: next(times))
 
@@ -583,7 +638,7 @@ class TestMITMPerformRequestBranches(unittest.IsolatedAsyncioTestCase):
         self.assertIn("Timed out", handler.wfile.getvalue().decode("utf-8"))
 
     async def test_rewrites_css_response_body(self):
-        handler = self._make_handler("/sid-1/style.css")
+        handler = self._make_handler(f"/{VALID_SID}/style.css")
 
         async def fake_send_message(socket, payload):
             mitm_server.cache["css-key"] = {
@@ -598,4 +653,23 @@ class TestMITMPerformRequestBranches(unittest.IsolatedAsyncioTestCase):
             datetime_mock.now.return_value = "css-key"
             await mitm_server.MITMHTTPRequestHandler.performRequest(handler, "GET")
 
-        self.assertIn("/sid-1/x.png", handler.wfile.getvalue().decode("utf-8"))
+        self.assertIn(f"/{VALID_SID}/x.png", handler.wfile.getvalue().decode("utf-8"))
+
+    async def test_ignores_broken_pipe_when_writing_response(self):
+        handler = self._make_handler(f"/{VALID_SID}/page")
+        handler.wfile = SimpleNamespace(write=MagicMock(side_effect=BrokenPipeError))
+
+        async def fake_send_message(socket, payload):
+            mitm_server.cache["pipe-key"] = {
+                "type": "text/plain",
+                "content": "hello",
+                "method": "GET",
+            }
+
+        with patch("modules.MITMServer.socksUtil.getSocketBySid", return_value=object()), patch(
+            "modules.MITMServer.cryptoUtil.sendSecretMessage", new=AsyncMock(side_effect=fake_send_message)
+        ), patch("modules.MITMServer.datetime.datetime") as datetime_mock, patch("builtins.print"):
+            datetime_mock.now.return_value = "pipe-key"
+            await mitm_server.MITMHTTPRequestHandler.performRequest(handler, "GET")
+
+        handler.send_response.assert_called_once_with(200)

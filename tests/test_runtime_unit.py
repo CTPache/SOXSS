@@ -144,6 +144,79 @@ class FakeConnectionClosed(Exception):
 
 
 class TestSocxssRuntime(SocksUtilStateMixin, CryptoUtilStateMixin, SocxssImportMixin, unittest.IsolatedAsyncioTestCase):
+    async def test_replace_existing_socket_for_sid_closes_and_removes_previous(self):
+        socxss = self.load_socxss_module()
+        existing = make_websocket(path="/sid-dupe", remote_ip="10.0.0.2", socket_id="old")
+        existing.close = AsyncMock()
+        fresh = make_websocket(path="/sid-dupe", remote_ip="10.0.0.3", socket_id="new")
+
+        socksUtil.sockets.append(existing)
+
+        await socxss._replace_existing_socket_for_sid("sid-dupe", fresh)
+        await asyncio.sleep(0)
+
+        existing.close.assert_awaited_once_with()
+        self.assertNotIn(existing, socksUtil.sockets)
+
+    async def test_replace_existing_socket_for_sid_tolerates_close_failure(self):
+        socxss = self.load_socxss_module()
+        existing = make_websocket(path="/sid-dupe", remote_ip="10.0.0.2", socket_id="old")
+        existing.close = AsyncMock(side_effect=RuntimeError("close failed"))
+        fresh = make_websocket(path="/sid-dupe", remote_ip="10.0.0.3", socket_id="new")
+
+        socksUtil.sockets.append(existing)
+
+        await socxss._replace_existing_socket_for_sid("sid-dupe", fresh)
+        await asyncio.sleep(0)
+
+        existing.close.assert_awaited_once_with()
+        self.assertNotIn(existing, socksUtil.sockets)
+
+    async def test_replace_existing_socket_for_sid_detaches_before_close_completes(self):
+        socxss = self.load_socxss_module()
+        close_started = asyncio.Event()
+        release_close = asyncio.Event()
+
+        async def slow_close():
+            close_started.set()
+            await release_close.wait()
+
+        existing = make_websocket(path="/sid-dupe", remote_ip="10.0.0.2", socket_id="old")
+        existing.close = slow_close
+        fresh = make_websocket(path="/sid-dupe", remote_ip="10.0.0.3", socket_id="new")
+        socksUtil.sockets.append(existing)
+
+        await socxss._replace_existing_socket_for_sid("sid-dupe", fresh)
+        await asyncio.sleep(0)
+
+        self.assertNotIn(existing, socksUtil.sockets)
+        self.assertTrue(close_started.is_set())
+        release_close.set()
+        await asyncio.sleep(0)
+
+    async def test_exec_replaces_existing_socket_with_same_sid_before_handling(self):
+        socxss = self.load_socxss_module()
+        existing = make_websocket(path="/sid-same", remote_ip="10.0.0.2", socket_id="old")
+        existing.close = AsyncMock()
+        socksUtil.sockets.append(existing)
+
+        websocket = make_websocket(path="/sid-same", remote_ip="10.0.0.8", socket_id="new")
+        secret_key, iv = cryptoUtil.generate_key_iv()
+        cryptoUtil.set_key_iv("sid-same", secret_key, iv)
+
+        default_handler = SimpleNamespace(handleMessage=AsyncMock())
+        encrypted_msg = cryptoUtil.encrypt('{"type": 0, "msg": "hello"}', "sid-same")
+        websocket.recv = AsyncMock(side_effect=[encrypted_msg, FakeConnectionClosed()])
+
+        with patch.object(socxss, "modules", {0: default_handler}), patch.object(socxss, "defaultModule", 0), patch.object(
+            socxss.exceptions, "ConnectionClosed", FakeConnectionClosed
+        ), patch("builtins.print"):
+            await socxss.exec(websocket)
+            await asyncio.sleep(0)
+
+        existing.close.assert_awaited_once_with()
+        self.assertNotIn(existing, socksUtil.sockets)
+
     async def test_exec_routes_message_to_typed_module_and_cleans_up_socket(self):
         socxss = self.load_socxss_module()
         websocket = make_websocket(path="/sid-1", remote_ip="10.0.0.8")

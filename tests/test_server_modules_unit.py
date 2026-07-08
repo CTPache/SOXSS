@@ -73,6 +73,18 @@ class TestConsoleServer(SocksUtilStateMixin, unittest.IsolatedAsyncioTestCase):
         self.assertEqual(response.text, '{"outputType": "info", "text": "stale"}')
         self.assertEqual(sleep_mock.await_count, 1000)
 
+    async def test_handle_post_returns_error_payload_when_send_message_raises(self):
+        request = DummyRequest("eval 1")
+        console_server.consoleMod = SimpleNamespace(sendMessage=AsyncMock(side_effect=RuntimeError("socket closed")))
+        console_server.consoleOut = "old"
+
+        with patch("modules.ConsoleServer.asyncio.sleep", new=AsyncMock()):
+            response = await console_server.handle_post(request)
+
+        payload = json.loads(response.text)
+        self.assertEqual(payload["outputType"], "error")
+        self.assertIn("command handling failed", payload["text"])
+
     async def test_handle_static_serves_existing_file(self):
         with TemporaryDirectory() as tmpdir:
             file_path = Path(tmpdir) / "index.html"

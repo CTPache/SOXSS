@@ -5,6 +5,7 @@ import argparse
 import sys
 import json
 import logging
+import inspect
 import server.server as httpServer
 from websockets.asyncio.server import serve
 from websockets import exceptions
@@ -110,6 +111,29 @@ def apply_config_overrides(parsed_args):
         setattr(config, key, coerced_value)
 
 
+async def _replace_existing_socket_for_sid(sid, websocket):
+    existing = socksUtil.getSocketBySid(sid)
+    if not existing or existing is websocket:
+        return
+
+    if existing in socksUtil.sockets:
+        if socksUtil.sockets.index(existing) == socksUtil.current:
+            socksUtil.current = 0
+        socksUtil.removeSocket(existing)
+
+    close_method = getattr(existing, "close", None)
+    if callable(close_method):
+        async def _close_previous_socket():
+            try:
+                close_result = close_method()
+                if inspect.isawaitable(close_result):
+                    await asyncio.wait_for(close_result, timeout=0.5)
+            except Exception:
+                pass
+
+        asyncio.create_task(_close_previous_socket())
+
+
 async def exec(websocket):
     remote_ip = websocket.request.headers.get("CF-Connecting-IP") or (websocket.remote_address[0] if websocket.remote_address else "unknown")
     # In websockets.asyncio, path is in websocket.request.path
@@ -118,7 +142,8 @@ async def exec(websocket):
     
     # Store remote_ip on websocket for other modules to use
     websocket.remote_ip = remote_ip
-    
+
+    await _replace_existing_socket_for_sid(sid, websocket)
     socksUtil.addSocket(websocket)
     try:
         while True:

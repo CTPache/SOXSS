@@ -181,7 +181,24 @@ class TestConsoleModule(SocksUtilStateMixin, unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result["text"], "local")
         payload = json.loads(console_server.consoleOut)
         self.assertEqual(payload["text"], "local")
-        self.assertEqual(payload["timestamp"], 99.0)
+
+    async def test_send_message_removes_disconnected_socket_and_reports_error(self):
+        module = ConsoleInWeb()
+        websocket = make_websocket(path="/sid-disconnect", remote_ip="10.0.0.1", socket_id="sock-disconnect")
+        socksUtil.sockets.append(websocket)
+        fake_command = SimpleNamespace(sendsMessage=True, execute=MagicMock(return_value='{"Command": "OK"}'))
+
+        with patch("modules.consoleModule.commands_mod.getCommands", return_value={"ok": fake_command}), patch(
+            "modules.consoleModule.sendSecretMessage", new=AsyncMock(side_effect=RuntimeError("sent 1000 (OK); no close frame received"))
+        ), patch("modules.consoleModule.time.time", return_value=111.0):
+            result = await module.sendMessage(websocket, "ok")
+
+        self.assertEqual(result, '{"Command": "OK"}')
+        self.assertNotIn(websocket, socksUtil.sockets)
+        payload = json.loads(console_server.consoleOut)
+        self.assertEqual(payload["outputType"], "error")
+        self.assertIn("target disconnected while sending command", payload["text"])
+        self.assertEqual(payload["timestamp"], 111.0)
 
 
 class TestLoggerModule(WorkingDirectoryMixin, unittest.IsolatedAsyncioTestCase):

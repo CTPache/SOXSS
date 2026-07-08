@@ -7,6 +7,13 @@ function mitmButtonIdForSid(sid) {
     return `mitmButton-${sid.replace(/[^a-zA-Z0-9_-]/g, '_')}`;
 }
 
+function updateSelectedClientIdentity(client, index) {
+    currentClient = index;
+    const shortSid = client.sid.substring(0, 8);
+    document.getElementById('terminalPrompt').textContent = `${shortSid}@${client.ip}:~$`;
+    document.getElementById('previewStatus').textContent = `Target: ${client.ip}`;
+}
+
 async function loadClientList() {
     try {
         const data = await sendConsole('list');
@@ -35,12 +42,15 @@ async function loadClientList() {
         }
 
         if (currentClientSid) {
-            const selectedExists = Object.values(clients).some(c => c.sid === currentClientSid);
-            if (!selectedExists) {
+            const selectedEntry = Object.entries(clients).find(([, c]) => c.sid === currentClientSid);
+            if (!selectedEntry) {
                 currentClient = null;
                 currentClientSid = null;
                 document.getElementById('terminalPrompt').textContent = 'no-target@console:~$';
                 document.getElementById('previewStatus').textContent = 'Target: disconnected';
+            } else {
+                const [selectedIndex, selectedClient] = selectedEntry;
+                updateSelectedClientIdentity(selectedClient, selectedIndex);
             }
         }
     } catch (e) {
@@ -56,10 +66,7 @@ async function selectClient(index) {
 
     currentClient = index;
     currentClientSid = client.sid;
-    // Update UI active state
-    const shortSid = client.sid.substring(0, 8);
-    document.getElementById('terminalPrompt').textContent = `${shortSid}@${client.ip}:~$`;
-    document.getElementById('previewStatus').textContent = `Target: ${client.ip}`;
+    updateSelectedClientIdentity(client, index);
 
     await sendConsole("change " + index);
 

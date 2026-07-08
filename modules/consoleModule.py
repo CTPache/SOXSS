@@ -3,6 +3,7 @@ import asyncio
 import time
 from cryptoUtil import sendSecretMessage
 from socksUtil import getCurrent
+import socksUtil
 from modules.abstractModule import Module
 import modules.consoleCommands.getCommands as commands_mod
 import modules.ConsoleServer as server
@@ -30,7 +31,17 @@ class ConsoleInWeb(Module):
         result = cmd.execute(msg)
         if websocket:
             if cmd.sendsMessage:
-                await sendSecretMessage(websocket, result)
+                try:
+                    await sendSecretMessage(websocket, result)
+                except Exception as e:
+                    if websocket in socksUtil.sockets:
+                        if socksUtil.sockets.index(websocket) == socksUtil.current:
+                            socksUtil.current = 0
+                        socksUtil.removeSocket(websocket)
+                    await self.handleMessage(None, {
+                        "outputType": "error",
+                        "text": f"target disconnected while sending command: {e}"
+                    })
             else:
                 await self.handleMessage(None, result)
         else:

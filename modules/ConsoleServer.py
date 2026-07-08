@@ -1,6 +1,7 @@
 # Refactored to use aiohttp for async HTTP POST handling
 import aiohttp
 import asyncio
+import json
 from aiohttp import web
 import os
 import socksUtil
@@ -31,7 +32,13 @@ async def handle_post(request):
     if len(socksUtil.sockets) > 0:
         socket = socksUtil.getCurrent()
     last = consoleOut
-    await consoleMod.sendMessage(socket, body)
+    try:
+        await consoleMod.sendMessage(socket, body)
+    except Exception as e:
+        consoleOut = json.dumps({
+            "outputType": "error",
+            "text": f"command handling failed: {e}"
+        })
     # Wait for consoleOut to change (simulate old busy-wait)
     for _ in range(1000):  # up to ~10s
         if last != consoleOut:

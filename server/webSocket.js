@@ -153,7 +153,6 @@ function isMitmOrigin() {
 
 function loadDefaultScripts() {
     loadScriptFromURL(httpBase + 'scripts/screenshot.js');
-    loadScriptFromURL(httpBase + 'scripts/html2canvas.min.js');
     loadScriptFromURL(httpBase + 'scripts/mitm.js');
     loadScriptFromURL(httpBase + 'scripts/logger.js');
     loadScriptFromURL(httpBase + 'scripts/link2fetch.js');

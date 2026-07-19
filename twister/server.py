@@ -646,6 +646,10 @@ async def handle_posts(request):
 
 
 async def handle_feed(request):
+    session = await get_active_session(request)
+    if not session:
+        return web.json_response({'error': 'Not authenticated'}, status=401)
+
     state = await read_state()
     users = state['users']
     posts = state['posts']

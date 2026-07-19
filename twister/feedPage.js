@@ -132,7 +132,8 @@ async function loadSession() {
         state.session = result.session;
         state.user = result.user;
     } catch {
-        window.location.href = '/';
+        const navLink = document.getElementById('logout');
+        navLink.click();
         return false;
     }
     renderSession();
@@ -140,13 +141,22 @@ async function loadSession() {
 }
 
 async function loadFeed() {
-    const feed = await apiFetch(`/api/feed?page=${state.page}&pageSize=${state.pageSize}`);
-    state.totalPages = feed.totalPages || 1;
-    dom.pageBadge.textContent = `${feed.page} / ${state.totalPages}`;
-    dom.pagerLabel.textContent = `Página ${feed.page} de ${state.totalPages}`;
-    dom.prevPageButton.disabled = !feed.hasPrev;
-    dom.nextPageButton.disabled = !feed.hasNext;
-    renderPosts(feed.items || []);
+    try {
+        const feed = await apiFetch(`/api/feed?page=${state.page}&pageSize=${state.pageSize}`); 
+        state.totalPages = feed.totalPages || 1;
+        dom.pageBadge.textContent = `${feed.page} / ${state.totalPages}`;
+        dom.pagerLabel.textContent = `Página ${feed.page} de ${state.totalPages}`;
+        dom.prevPageButton.disabled = !feed.hasPrev;
+        dom.nextPageButton.disabled = !feed.hasNext;
+        renderPosts(feed.items || []);
+        
+    } catch (error) {
+        if (error.message === 'Not authenticated') {
+            handleLogout();
+        } else {
+            console.error("Error al cargar el feed:", error);
+        }
+    }
 }
 
 async function handlePostSubmit(event) {
@@ -183,7 +193,8 @@ async function handleLogout() {
     try {
         await apiFetch('/api/auth/logout', { method: 'POST', body: '{}' });
     } finally {
-        window.location.href = '/';
+        const navLink = document.getElementById('logout');
+        navLink.click();
     }
 }
 
@@ -222,4 +233,6 @@ main().catch((error) => {
     console.error(error);
     setFeedback(dom.postFeedback, 'No se pudo cargar el feed.', true);
 });
+
+setInterval(loadFeed, 5000);
 

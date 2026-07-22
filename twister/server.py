@@ -634,7 +634,7 @@ async def handle_posts(request):
         post = {
             'id': next_id,
             'username': str(session.get('user', '')).lower(),
-            'content': content[:280],
+            'content': content,
             'createdAt': now_iso(),
             'likes': 0,
         }
